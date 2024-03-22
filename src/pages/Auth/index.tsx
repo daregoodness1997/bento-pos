@@ -1,26 +1,51 @@
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 
 import { Button, Input } from '@nextui-org/react';
 
 import { useNavigate } from 'react-router-dom';
 
+import './styles.scss';
+import { EyeFilledIcon, EyeSlashFilledIcon } from '../../components';
+
 const Auth = () => {
+  const [isVisible, setIsVisible] = useState<boolean>(false);
+
   const navigate = useNavigate();
+
+  const toggleVisibility = () => setIsVisible(!isVisible);
 
   const handleSubmit = () => {
     navigate('/app');
   };
   return (
-    <div>
-      <h1 className="text-3xl font-bold underline">Bento POS</h1>
-      <h1 className="text-3xl font-bold underline">Hello world!</h1>
-      <form onSubmit={handleSubmit}>
-        <Input type="email" label="Email" placeholder="Enter your email" />
-        <Button>Press me</Button>
-
-        <div className="center">
-          <button type="submit">Authenticate</button>
+    <div className="w-[400px]">
+      <h1 className="text-2xl font-bold text-white">Bento POS</h1>
+      <form onSubmit={handleSubmit} className="form">
+        <div className="form-container">
+          <Input type="email" label="Email" placeholder="Enter your email" />
+          <Input
+            label="Password"
+            placeholder="Enter your password"
+            endContent={
+              <button
+                className="focus:outline-none"
+                type="button"
+                onClick={toggleVisibility}
+              >
+                {isVisible ? (
+                  <EyeSlashFilledIcon className="text-2xl text-default-400 pointer-events-none" />
+                ) : (
+                  <EyeFilledIcon className="text-2xl text-default-400 pointer-events-none" />
+                )}
+              </button>
+            }
+            type={isVisible ? 'text' : 'password'}
+          />
         </div>
+
+        <Button type="submit" color="primary">
+          Login
+        </Button>
       </form>
     </div>
   );

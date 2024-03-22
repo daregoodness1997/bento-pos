@@ -8,12 +8,14 @@ import { Auth, Dashboard } from '../pages';
 const App = () => {
   return (
     <NextUIProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<Auth />} />
-          <Route path="/app" element={<Dashboard />} />
-        </Routes>
-      </Router>
+      <main className="dark ">
+        <Router>
+          <Routes>
+            <Route path="/" element={<Auth />} />
+            <Route path="/app" element={<Dashboard />} />
+          </Routes>
+        </Router>{' '}
+      </main>
     </NextUIProvider>
   );
 };
