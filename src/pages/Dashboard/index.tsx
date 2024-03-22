@@ -1,7 +1,8 @@
 import React, { memo } from 'react';
+import { DashboardLayout } from '../../layouts';
 
 const Dashboard = () => {
-  return <div>Dashboard</div>;
+  return <DashboardLayout>Dashboard</DashboardLayout>;
 };
 
 export default memo(Dashboard);

@@ -12,9 +12,11 @@ const App = () => {
         <Router>
           <Routes>
             <Route path="/" element={<Auth />} />
-            <Route path="/app" element={<Dashboard />} />
+            <Route path="/app">
+              <Route index element={<Dashboard />} />
+            </Route>
           </Routes>
-        </Router>{' '}
+        </Router>
       </main>
     </NextUIProvider>
   );

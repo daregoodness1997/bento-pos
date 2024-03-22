@@ -1,0 +1,14 @@
+.nav-link {
+  cursor: pointer;
+  padding: 10px 16px;
+  border-radius: 8px;
+  display: block;
+  width: 100%;
+  margin: 0;
+}
+
+.nav-link:hover {
+  background-color: #000;
+  transform: scale(0.9);
+  transition: all 0.5s ease-in;
+}
