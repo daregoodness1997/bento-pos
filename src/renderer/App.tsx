@@ -1,10 +1,13 @@
 import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
 import icon from '../../assets/icon.svg';
 import './App.css';
+import { SideMenu } from '../components';
 
 const Hello = () => {
   return (
     <div>
+      <SideMenu />
+
       <div className="Hello">
         <img width="200" alt="icon" src={icon} />
       </div>
