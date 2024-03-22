@@ -1,5 +1,5 @@
-/* eslint global-require: off, import/no-extraneous-dependencies: off */
-
+// postcss.config.js
 module.exports = {
+  // eslint-disable-next-line global-require
   plugins: [require('tailwindcss'), require('autoprefixer')],
 };

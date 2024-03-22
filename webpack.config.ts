@@ -1,6 +1,3 @@
-import tailwindcss from 'tailwindcss';
-import autoprefixer from 'autoprefixer';
-
 module.exports = {
   module: {
     rules: [
@@ -11,8 +8,10 @@ module.exports = {
       {
         loader: 'postcss-loader',
         options: {
-          ident: 'postcss',
-          plugins: [tailwindcss, autoprefixer],
+          postcssOptions: {
+            // eslint-disable-next-line global-require
+            plugins: [require('tailwindcss'), require('autoprefixer')],
+          },
         },
       },
     ],
