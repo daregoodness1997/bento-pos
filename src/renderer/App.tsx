@@ -1,22 +1,30 @@
 import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
 
 import { NextUIProvider } from '@nextui-org/react';
+import useDarkMode from 'use-dark-mode';
 
 import './App.css';
-import { Auth, Dashboard } from '../pages';
+import { Analytics, Auth, Dashboard, Sales, Settings } from '../pages';
 
 const App = () => {
+  const darkMode = useDarkMode(true);
+
   return (
     <NextUIProvider>
-      <main className="dark ">
+      <main
+        className={`${darkMode.value ? 'dark' : ''} text-foreground bg-background`}
+      >
         <Router>
           <Routes>
             <Route path="/" element={<Auth />} />
             <Route path="/app">
               <Route index element={<Dashboard />} />
+              <Route path="/app/analytics" element={<Analytics />} />
+              <Route path="/app/sales" element={<Sales />} />
+              <Route path="/app/settings" element={<Settings />} />
             </Route>
           </Routes>
-        </Router>
+        </Router>{' '}
       </main>
     </NextUIProvider>
   );
