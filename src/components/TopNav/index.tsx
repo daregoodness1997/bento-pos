@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { Input, Switch } from '@nextui-org/react';
 
 import { MoonIcon, SearchIcon, SunIcon } from '../icons';
+import UserDropdown from '../UserDropdown';
 
 const TopNav = () => {
   const onChange = () => {};
@@ -25,6 +26,8 @@ const TopNav = () => {
         endContent={<MoonIcon />}
         onChange={onChange}
       />
+
+      <UserDropdown />
     </div>
   );
 };

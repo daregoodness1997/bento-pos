@@ -1,8 +1,8 @@
 import SideMenu from './SideMenu';
-import StatCard from './StatCard';
 import NavLink from './NavLink';
 import MenuCard from './MenuCard';
 import TopNav from './TopNav';
+import StatCard from './StatCard';
 
 export * from './icons';
 

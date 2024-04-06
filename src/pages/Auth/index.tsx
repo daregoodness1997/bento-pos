@@ -43,7 +43,7 @@ const Auth = () => {
             />
           </div>
 
-          <Button type="submit" color="primary">
+          <Button type="submit" color="primary" radius="full" size="lg">
             Login
           </Button>
         </form>
