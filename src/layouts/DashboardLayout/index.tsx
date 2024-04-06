@@ -1,14 +1,19 @@
 import React, { memo, FC } from 'react';
 
 import { SideMenu, TopNav } from 'components';
-import { CartSection } from 'sections';
+import { SideSection } from 'sections';
 
 interface Props {
   children: React.ReactNode;
-  hasCart?: boolean;
+  hasSideSection?: boolean;
+  sideChildren?: React.ReactNode;
 }
 
-const DashboardLayout: FC<Props> = ({ children, hasCart }) => {
+const DashboardLayout: FC<Props> = ({
+  children,
+  hasSideSection,
+  sideChildren,
+}) => {
   return (
     <div className="flex items-start ">
       <SideMenu />
@@ -17,7 +22,7 @@ const DashboardLayout: FC<Props> = ({ children, hasCart }) => {
 
         <div className="flex w-full items-start py-8 gap-6">
           <div className="w-full"> {children}</div>
-          {hasCart && <CartSection />}
+          {hasSideSection && <SideSection>{sideChildren}</SideSection>}
         </div>
       </div>
     </div>
@@ -25,7 +30,8 @@ const DashboardLayout: FC<Props> = ({ children, hasCart }) => {
 };
 
 DashboardLayout.defaultProps = {
-  hasCart: false,
+  hasSideSection: false,
+  sideChildren: null,
 };
 
 export default memo(DashboardLayout);

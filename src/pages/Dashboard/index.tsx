@@ -7,7 +7,7 @@ import { MENU } from './constants';
 
 const Dashboard = () => {
   return (
-    <DashboardLayout hasCart>
+    <DashboardLayout hasSideSection>
       <div className="flex items-center justify-between">
         <Input
           placeholder="Search for product"

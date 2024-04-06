@@ -1,3 +1,3 @@
-import CartSection from './CartSection';
+import SideSection from './SideSection';
 
-export { CartSection };
+export { SideSection };
