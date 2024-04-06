@@ -1,43 +1,31 @@
 import React, { memo, FC } from 'react';
 
-import { Input, Switch } from '@nextui-org/react';
-import { MoonIcon, SearchIcon, SideMenu, SunIcon } from 'components';
+import { SideMenu, TopNav } from 'components';
+import { CartSection } from 'sections';
 
 interface Props {
   children: React.ReactNode;
+  hasCart?: boolean;
 }
 
-const DashboardLayout: FC<Props> = ({ children }) => {
-  const onChange = () => {};
-
+const DashboardLayout: FC<Props> = ({ children, hasCart }) => {
   return (
     <div className="flex items-start ">
       <SideMenu />
       <div className="px-4 py-4 w-full">
-        <div className="flex justify-end gap-2">
-          <div className="w-48">
-            <Input
-              placeholder="Search for product"
-              radius="full"
-              startContent={
-                <SearchIcon className="text-black/50 mb-0.5 dark:text-white/90 text-slate-400 pointer-events-none flex-shrink-0" />
-              }
-            />
-          </div>
+        <TopNav />
 
-          <Switch
-            size="md"
-            color="primary"
-            startContent={<SunIcon />}
-            endContent={<MoonIcon />}
-            onChange={onChange}
-          />
+        <div className="flex w-full items-start py-8 gap-6">
+          <div className="w-full"> {children}</div>
+          {hasCart && <CartSection />}
         </div>
-
-        {children}
       </div>
     </div>
   );
+};
+
+DashboardLayout.defaultProps = {
+  hasCart: false,
 };
 
 export default memo(DashboardLayout);

@@ -1,10 +1,10 @@
 import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
-
 import { NextUIProvider } from '@nextui-org/react';
 import useDarkMode from 'use-dark-mode';
 
-import './App.css';
 import { Analytics, Auth, Dashboard, Sales, Settings } from 'pages';
+
+import './App.css';
 
 const App = () => {
   const darkMode = useDarkMode(true);
