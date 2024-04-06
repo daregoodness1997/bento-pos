@@ -6,6 +6,7 @@ import { SunIcon } from './SunIcon';
 import HomeIcon from './HomeIcon';
 import AnalyticsIcon from './AnalyticsIcon';
 import ResturantIcon from './ResturantIcon';
+import SettingsIcon from './SettingsIcon';
 
 export {
   EyeFilledIcon,
@@ -16,4 +17,5 @@ export {
   HomeIcon,
   AnalyticsIcon,
   ResturantIcon,
+  SettingsIcon,
 };

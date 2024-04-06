@@ -4,7 +4,7 @@ import { NextUIProvider } from '@nextui-org/react';
 import useDarkMode from 'use-dark-mode';
 
 import './App.css';
-import { Analytics, Auth, Dashboard, Sales, Settings } from '../pages';
+import { Analytics, Auth, Dashboard, Sales, Settings } from 'pages';
 
 const App = () => {
   const darkMode = useDarkMode(true);

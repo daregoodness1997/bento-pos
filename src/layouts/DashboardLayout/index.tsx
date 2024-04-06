@@ -1,20 +1,14 @@
 import React, { memo, FC } from 'react';
 
 import { Input, Switch } from '@nextui-org/react';
-import useDarkMode from 'use-dark-mode';
-import { MoonIcon, SearchIcon, SideMenu, SunIcon } from '../../components';
+import { MoonIcon, SearchIcon, SideMenu, SunIcon } from 'components';
 
 interface Props {
   children: React.ReactNode;
 }
 
 const DashboardLayout: FC<Props> = ({ children }) => {
-  const darkMode = useDarkMode(true);
-
-  const onChange = () => {
-    if (darkMode) darkMode.disable;
-    if (darkMode == false) darkMode.enable;
-  };
+  const onChange = () => {};
 
   return (
     <div className="flex items-start ">
@@ -32,7 +26,6 @@ const DashboardLayout: FC<Props> = ({ children }) => {
           </div>
 
           <Switch
-            defaultSelected
             size="md"
             color="primary"
             startContent={<SunIcon />}

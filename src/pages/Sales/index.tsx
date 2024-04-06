@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { DashboardLayout } from '../../layouts';
+import { DashboardLayout } from 'layouts';
 
 const Sales = () => {
   return <DashboardLayout>Sales Reporting</DashboardLayout>;

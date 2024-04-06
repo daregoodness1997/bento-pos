@@ -1,11 +1,10 @@
 import React, { memo, useState } from 'react';
-
 import { Button, Input } from '@nextui-org/react';
-
 import { useNavigate } from 'react-router-dom';
 
+import { EyeFilledIcon, EyeSlashFilledIcon } from 'components';
+
 import './styles.scss';
-import { EyeFilledIcon, EyeSlashFilledIcon } from '../../components';
 
 const Auth = () => {
   const [isVisible, setIsVisible] = useState<boolean>(false);
