@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { Input, Button, Chip } from '@nextui-org/react';
+import { Input, Button, Chip, ScrollShadow } from '@nextui-org/react';
 
 import { DashboardLayout } from 'layouts';
 import { MenuCard, MoonIcon, SearchIcon } from 'components';
@@ -42,17 +42,19 @@ const Dashboard = () => {
         </Chip>
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-4">
-        {MENU.map((menu) => (
-          <MenuCard
-            key={menu.id}
-            name={menu.name}
-            price={menu.price}
-            imageUrl={menu.imageUrl}
-            currency="₦"
-          />
-        ))}
-      </div>
+      <ScrollShadow className="w-full h-[75vh] overflow-y-scroll no-scrollbar">
+        <div className="mt-4 grid grid-cols-4 gap-4">
+          {MENU.map((menu) => (
+            <MenuCard
+              key={menu.id}
+              name={menu.name}
+              price={menu.price}
+              imageUrl={menu.imageUrl}
+              currency="₦"
+            />
+          ))}
+        </div>
+      </ScrollShadow>
     </DashboardLayout>
   );
 };
