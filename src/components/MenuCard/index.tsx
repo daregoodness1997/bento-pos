@@ -1,5 +1,6 @@
 import React, { FC, memo } from 'react';
 import { Card, CardBody, CardFooter, Image, Button } from '@nextui-org/react';
+import { ToastUtils } from 'utils';
 
 interface Props {
   imageUrl: string;
@@ -9,6 +10,10 @@ interface Props {
 }
 
 const MenuCard: FC<Props> = ({ imageUrl, name, price, currency }) => {
+  const handleAddToCart = () => {
+    ToastUtils.displayToast('success', 'Item added to cart');
+  };
+
   return (
     <Card className="p-1" isFooterBlurred isPressable isHoverable>
       <CardBody className="overflow-visible py-2">
@@ -24,7 +29,12 @@ const MenuCard: FC<Props> = ({ imageUrl, name, price, currency }) => {
           </h4>
         </div>
 
-        <Button radius="full" size="sm" variant="flat">
+        <Button
+          radius="full"
+          size="sm"
+          variant="flat"
+          onClick={handleAddToCart}
+        >
           Add Item
         </Button>
       </CardFooter>
