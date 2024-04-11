@@ -1,8 +1,8 @@
 import React, { memo } from 'react';
-import { Input, Button, Chip, ScrollShadow } from '@nextui-org/react';
+import { Input, Button, ScrollShadow, Tabs, Tab } from '@nextui-org/react';
 
 import { DashboardLayout } from 'layouts';
-import { MenuCard, MoonIcon, SearchIcon } from 'components';
+import { MenuCard, SearchIcon } from 'components';
 import { MENU } from './constants';
 
 const Dashboard = () => {
@@ -24,37 +24,55 @@ const Dashboard = () => {
         </Button>
       </div>
 
-      <div className="mt-6 mb-4 flex items-center gap-2">
-        <Chip color="primary" startContent={<MoonIcon />} size="lg">
-          All Menu
-        </Chip>
-        <Chip size="lg" startContent={<MoonIcon />}>
-          Main Course
-        </Chip>
-        <Chip size="lg" startContent={<MoonIcon />}>
-          Desserts
-        </Chip>
-        <Chip size="lg" startContent={<MoonIcon />}>
-          Drinks
-        </Chip>
-        <Chip size="lg" startContent={<MoonIcon />}>
-          Asain
-        </Chip>
+      <div className="mt-6 mb-4 ">
+        <Tabs aria-label="Options">
+          <Tab key="all" title="All">
+            <ScrollShadow className="w-full h-[75vh] overflow-y-scroll no-scrollbar">
+              <div className="mt-4 grid grid-cols-4 gap-4">
+                {MENU.map((menu) => (
+                  <MenuCard
+                    key={menu.id}
+                    name={menu.name}
+                    price={menu.price}
+                    imageUrl={menu.imageUrl}
+                    currency="₦"
+                  />
+                ))}
+              </div>
+            </ScrollShadow>
+          </Tab>
+          <Tab key="dessert" title="Dessert">
+            <ScrollShadow className="w-full h-[75vh] overflow-y-scroll no-scrollbar">
+              <div className="mt-4 grid grid-cols-4 gap-4">
+                {MENU.map((menu) => (
+                  <MenuCard
+                    key={menu.id}
+                    name={menu.name}
+                    price={menu.price}
+                    imageUrl={menu.imageUrl}
+                    currency="₦"
+                  />
+                ))}
+              </div>
+            </ScrollShadow>
+          </Tab>
+          <Tab key="dinner" title="Dinner">
+            <ScrollShadow className="w-full h-[75vh] overflow-y-scroll no-scrollbar">
+              <div className="mt-4 grid grid-cols-4 gap-4">
+                {MENU.map((menu) => (
+                  <MenuCard
+                    key={menu.id}
+                    name={menu.name}
+                    price={menu.price}
+                    imageUrl={menu.imageUrl}
+                    currency="₦"
+                  />
+                ))}
+              </div>
+            </ScrollShadow>
+          </Tab>
+        </Tabs>
       </div>
-
-      <ScrollShadow className="w-full h-[75vh] overflow-y-scroll no-scrollbar">
-        <div className="mt-4 grid grid-cols-4 gap-4">
-          {MENU.map((menu) => (
-            <MenuCard
-              key={menu.id}
-              name={menu.name}
-              price={menu.price}
-              imageUrl={menu.imageUrl}
-              currency="₦"
-            />
-          ))}
-        </div>
-      </ScrollShadow>
     </DashboardLayout>
   );
 };
