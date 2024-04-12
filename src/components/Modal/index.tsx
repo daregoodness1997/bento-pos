@@ -12,9 +12,17 @@ interface Props {
   isOpen: boolean;
   onOpenChange: () => void;
   children?: React.ReactNode;
+  title?: string;
+  onSubmit?: () => void;
 }
 
-const Modal: FC<Props> = ({ isOpen, onOpenChange, children }) => {
+const Modal: FC<Props> = ({
+  isOpen,
+  onOpenChange,
+  title,
+  onSubmit,
+  children,
+}) => {
   return (
     <NextModal
       backdrop="opaque"
@@ -22,7 +30,7 @@ const Modal: FC<Props> = ({ isOpen, onOpenChange, children }) => {
       onOpenChange={onOpenChange}
       radius="lg"
       classNames={{
-        body: 'py-6',
+        body: 'py-6 pt-12',
         backdrop: 'bg-[#18181b]/50 backdrop-opacity-40',
         base: 'border-[#18181b] bg-[#18181b] dark:bg-[#19172c] text-[#a8b0d3]',
         header: 'border-b-[1px] border-[#18181b]',
@@ -33,9 +41,10 @@ const Modal: FC<Props> = ({ isOpen, onOpenChange, children }) => {
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader className="flex flex-col gap-1">
-              Modal Title
-            </ModalHeader>
+            {title && (
+              <ModalHeader className="flex flex-col gap-1">{title}</ModalHeader>
+            )}
+
             <ModalBody>{children}</ModalBody>
             <ModalFooter>
               <Button
@@ -46,8 +55,8 @@ const Modal: FC<Props> = ({ isOpen, onOpenChange, children }) => {
               >
                 Close
               </Button>
-              <Button color="primary" radius="full" onPress={onClose}>
-                Action
+              <Button color="primary" radius="full" onPress={onSubmit}>
+                Complete
               </Button>
             </ModalFooter>
           </>
@@ -59,6 +68,8 @@ const Modal: FC<Props> = ({ isOpen, onOpenChange, children }) => {
 
 Modal.defaultProps = {
   children: null,
+  title: '',
+  onSubmit: () => null,
 };
 
 export default memo(Modal);

@@ -1,26 +1,43 @@
 import React, { FC, memo, useContext } from 'react';
 
-import { Button, Image, useDisclosure } from '@nextui-org/react';
+import { Button, Image, Input, useDisclosure } from '@nextui-org/react';
 import { Icon } from '@iconify/react';
 import { CartCard, Modal } from 'components';
 import { OrderContext } from 'context';
+import { ToastUtils } from 'utils';
+import { Toast } from 'app';
 
 interface Props {
   children: React.ReactNode;
 }
 
 const SideSection: FC<Props> = ({ children }) => {
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  const { isOpen, onOpen, onOpenChange, onClose } = useDisclosure();
 
   const {
-    state: { cartItems },
-    handlers: { handleRemoveFromCart, resetCart },
+    state: { cartItems, orderNo, totalPrice },
+    handlers: { handleRemoveFromCart, resetCart, handleCreateOrder },
   } = useContext(OrderContext.Context);
 
-  const orderNo = 'Order#177384';
   const orderDate = '12th August 2021';
-  const orderTotalPrice = '4000';
   const currency = '₦';
+
+  const handlSubmit = async () => {
+    try {
+      resetCart?.();
+      onClose();
+      handleCreateOrder({
+        cartItems,
+        orderNo,
+        createdAt: new Date(),
+        createdBy: 'Admin',
+        status: 'paid',
+      });
+      ToastUtils.displayToast(Toast.success, 'Order created successfully');
+    } catch (err) {
+      ToastUtils.displayToast(Toast.warning, 'Unable to createe the order');
+    }
+  };
 
   return (
     <div className="w-1/3 rounded-lg bg-stone-950">
@@ -32,13 +49,16 @@ const SideSection: FC<Props> = ({ children }) => {
         <Icon icon="gravity-ui:arrow-down-to-square" width="24" height="24" />
       </header>
 
-      <Image
-        src="assets/images/flyer.png"
-        removeWrapper
-        alt="Breathing app icon"
-        className="w-full bg-black rounded-t-lg"
-        radius="none"
-      />
+      {cartItems.length === 0 && (
+        <Image
+          src="assets/images/flyer.png"
+          removeWrapper
+          alt="Breathing app icon"
+          className="w-full bg-black rounded-t-lg"
+          radius="none"
+        />
+      )}
+
       <div className="p-8 px-4 ">
         {cartItems.length > 0 ? (
           <div className="flex justify-end my-2">
@@ -61,8 +81,10 @@ const SideSection: FC<Props> = ({ children }) => {
                 key={item.id}
                 handleRemoveItem={() => handleRemoveFromCart(item.id)}
                 name={item.name}
+                price={item.price}
                 quantity={item.quantity}
                 imageUrl={item.imageUrl}
+                currency={currency}
               />
             ))}
 
@@ -79,7 +101,7 @@ const SideSection: FC<Props> = ({ children }) => {
                 onClick={onOpen}
               >
                 Charge Customer {currency}
-                {orderTotalPrice}
+                {totalPrice}
               </Button>
             </div>
           </div>
@@ -91,8 +113,13 @@ const SideSection: FC<Props> = ({ children }) => {
         )}
 
         <div>{children}</div>
-        <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-          Do you want to remove the item from the cart
+        <Modal
+          isOpen={isOpen}
+          onOpenChange={onOpenChange}
+          onSubmit={handlSubmit}
+        >
+          <Input label="Amount Recieved" />
+          <Input label="Change if any" />
         </Modal>
       </div>
     </div>

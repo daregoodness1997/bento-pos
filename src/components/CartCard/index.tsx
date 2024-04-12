@@ -5,7 +5,9 @@ import { Icon } from '@iconify/react';
 interface Props {
   name: string;
   imageUrl: string;
+  currency: string;
   quantity: number;
+  price: number | string;
   handleRemoveItem: () => void;
 }
 
@@ -13,7 +15,9 @@ const CartCard: FC<Props> = ({
   imageUrl,
   name,
   quantity = 1,
+  price,
   handleRemoveItem,
+  currency,
 }) => {
   return (
     <Card className="p-4 " isPressable isHoverable>
@@ -26,8 +30,14 @@ const CartCard: FC<Props> = ({
             <Avatar isBordered color="default" src={imageUrl} />
           </div>
 
-          <div className="text-sm text-ellipsis text-white text-left">
-            {name}
+          <div className="text-left">
+            <div className="text-md text-ellipsis text-white text-left">
+              {name}
+            </div>
+            <small className="text-sm text-gray-400 my-0 p-0">
+              {currency}
+              {price}
+            </small>
           </div>
         </div>
 

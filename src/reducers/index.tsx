@@ -3,16 +3,21 @@ import {
   Initial,
   retrieveCartItemsFromSessionStorage,
   storeCartItemsToSessionStorage,
+  storeOrdersToSessionStorage,
+  retrieveOrdersFromSessionStorage,
 } from 'app';
 import { MENU } from 'pages/Dashboard/constants';
+import { GenerateRandomUtils } from 'utils';
 
 const initialState: Initial = {
   cartItems: retrieveCartItemsFromSessionStorage(),
+  orders: retrieveOrdersFromSessionStorage(),
   quantities: MENU.reduce(
     (acc, { id, quantity }) => ({ ...acc, [id]: quantity }),
     {},
   ),
   totalPrice: 0,
+  orderNo: '',
 };
 
 initialState.totalPrice = initialState.cartItems.reduce((accumulator, item) => {
@@ -64,6 +69,9 @@ function reducer(state: any, action: any): any {
     }
     case ActionTypes.ADD_TO_CART: {
       const item = action.payload;
+      if (state.orderNo === '')
+        state.orderNo =
+          GenerateRandomUtils.generateRandomHexDigitWithPrefix('ORD');
       const existingItem = state.cartItems.find(
         (cartItem: any) => String(cartItem.id) === String(item.id),
       );
@@ -74,6 +82,14 @@ function reducer(state: any, action: any): any {
       }
 
       storeCartItemsToSessionStorage(state.cartItems);
+
+      return { ...state };
+    }
+
+    case ActionTypes.CREATE_ORDER: {
+      const order = action.payload;
+      state.orders.push(order);
+      storeOrdersToSessionStorage(state.orders);
 
       return { ...state };
     }
@@ -89,6 +105,7 @@ function reducer(state: any, action: any): any {
 
     case ActionTypes.RESET_CART: {
       state.cartItems = [];
+      state.orderNo = '';
       storeCartItemsToSessionStorage([]);
 
       return { ...state };

@@ -8,7 +8,7 @@ import React, {
 } from 'react';
 
 import { reducer, initialState } from 'reducers';
-import { ActionTypes, Item, Toast } from 'app';
+import { ActionTypes, Item, Order, Toast } from 'app';
 import { ToastUtils } from 'utils';
 
 import Context from './Context';
@@ -67,6 +67,24 @@ const Provider: FC<Props> = ({ children }) => {
     0,
   );
 
+  const handleCreateOrder = useCallback(
+    (order: Order) => {
+      dispatch({ type: ActionTypes.CREATE_ORDER, payload: order });
+      ToastUtils.displayToast(
+        Toast.success,
+        'Congratulations, you have successfully added the item to your cart',
+      );
+    },
+    [dispatch],
+  );
+
+  state.totalPrice = state.cartItems.reduce(
+    (accumulator: number, item: { price: number; quantity: number }) => {
+      return accumulator + Number(item.price) * item.quantity;
+    },
+    0,
+  );
+
   const orderState = useMemo(
     () => ({
       state,
@@ -76,6 +94,7 @@ const Provider: FC<Props> = ({ children }) => {
         handleDecreaseCount,
         handleRemoveFromCart,
         handleAddToCart,
+        handleCreateOrder,
       },
     }),
     [
@@ -83,7 +102,7 @@ const Provider: FC<Props> = ({ children }) => {
       handleDecreaseCount,
       handleIncreaseCount,
       handleRemoveFromCart,
-
+      handleCreateOrder,
       resetCart,
       state,
     ],

@@ -1,4 +1,4 @@
-import { ActionTypes } from 'app/enums';
+import { ActionTypes, OrderStatus } from 'app/enums';
 
 export type Quantities = {
   [key: string]: number;
@@ -12,11 +12,21 @@ export type Item = {
   quantity: number;
 };
 
+export type Order = {
+  cartItems: Item[];
+  orderNo: string;
+  createdAt: Date;
+  createdBy: string;
+  status: keyof typeof OrderStatus;
+};
+
 export type Cart = {
   state: {
     cartItems: Item[];
+    orders: Order[];
     quantities: Quantities;
     totalPrice: number;
+    orderNo: string;
   };
   handlers: {
     resetCart?: () => void;
@@ -24,13 +34,16 @@ export type Cart = {
     handleDecreaseCount: (id: string) => void;
     handleRemoveFromCart: (id: string) => void;
     handleAddToCart: (item: Item) => void;
+    handleCreateOrder: (order: Order) => void;
   };
 };
 
 export type Initial = {
   cartItems: Item[];
+  orders: Order[];
   quantities: Quantities;
   totalPrice: number;
+  orderNo: string;
 };
 
 export interface SetCartItemsAction {
@@ -63,6 +76,9 @@ export interface RemoveFromCartAction {
 export interface ResetCartAction {
   type: ActionTypes.RESET_CART;
 }
+export interface CreateOrderAction {
+  type: ActionTypes.CREATE_ORDER;
+}
 
 export type Action =
   | SetCartItemsAction
@@ -71,4 +87,5 @@ export type Action =
   | DecreaseCartQuantity
   | AddToCartAction
   | RemoveFromCartAction
-  | ResetCartAction;
+  | ResetCartAction
+  | CreateOrderAction;
