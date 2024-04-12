@@ -1,30 +1,33 @@
 import React, { FC, memo } from 'react';
-import { Avatar, Card, Chip, useDisclosure } from '@nextui-org/react';
+import { Avatar, Card, Chip } from '@nextui-org/react';
 import { Icon } from '@iconify/react';
-import Modal from 'components/Modal';
 
-interface Props {}
+interface Props {
+  name: string;
+  imageUrl: string;
+  quantity: number;
+  handleRemoveItem: () => void;
+}
 
-const CartCard: FC<Props> = () => {
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
-
+const CartCard: FC<Props> = ({
+  imageUrl,
+  name,
+  quantity = 1,
+  handleRemoveItem,
+}) => {
   return (
     <Card className="p-4 " isPressable isHoverable>
       <div className="flex justify-between items-center w-full gap-2">
         <div className="flex items-center  gap-2">
           <div className="flex items-center  gap-4">
             <Chip variant="bordered" size="sm">
-              x 1
+              x {quantity}
             </Chip>
-            <Avatar
-              isBordered
-              color="default"
-              src="https://source.unsplash.com/900x900/?chicken'"
-            />
+            <Avatar isBordered color="default" src={imageUrl} />
           </div>
 
           <div className="text-sm text-ellipsis text-white text-left">
-            Fried Rice and Turkey to bad gaan...
+            {name}
           </div>
         </div>
 
@@ -33,12 +36,9 @@ const CartCard: FC<Props> = () => {
           width="20"
           height="20"
           style={{ color: '#d01b1b' }}
-          onClick={onOpen}
+          onClick={handleRemoveItem}
         />
       </div>
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-        Do you want to remove the item from the cart
-      </Modal>
     </Card>
   );
 };

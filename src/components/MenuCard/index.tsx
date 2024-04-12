@@ -2,31 +2,23 @@ import React, { FC, memo, useContext } from 'react';
 import { Card, CardBody, CardFooter, Image, Button } from '@nextui-org/react';
 
 import { OrderContext } from 'context';
+import { Item } from 'app';
 
 interface Props {
-  id: string;
-  imageUrl: string;
-  name: string;
   currency: string;
-  quantity: number;
-  price: number | string;
+  menu: Item;
 }
 
-const MenuCard: FC<Props> = ({
-  id,
-  imageUrl,
-  name,
-  price,
-  currency,
-  quantity,
-}) => {
+const MenuCard: FC<Props> = ({ menu, currency }) => {
   const {
     handlers: { handleAddToCart },
   } = useContext(OrderContext.Context);
 
   const handleAddToCartClicked = () => {
-    handleAddToCart({ id, imageUrl, name, price, quantity });
+    handleAddToCart(menu);
   };
+
+  const { imageUrl, name, price } = menu;
 
   return (
     <Card className="p-1" isFooterBlurred isPressable isHoverable>

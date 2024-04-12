@@ -30,15 +30,7 @@ const Dashboard = () => {
             <ScrollShadow className="w-full h-[75vh] overflow-y-scroll no-scrollbar">
               <div className="mt-4 grid grid-cols-4 gap-4">
                 {MENU.map((menu) => (
-                  <MenuCard
-                    key={menu.id}
-                    name={menu.name}
-                    price={menu.price}
-                    imageUrl={menu.imageUrl}
-                    currency="₦"
-                    id={menu.id}
-                    quantity={menu.quantity}
-                  />
+                  <MenuCard currency="₦" key={menu.id} menu={menu} />
                 ))}
               </div>
             </ScrollShadow>
@@ -47,15 +39,7 @@ const Dashboard = () => {
             <ScrollShadow className="w-full h-[75vh] overflow-y-scroll no-scrollbar">
               <div className="mt-4 grid grid-cols-4 gap-4">
                 {MENU.map((menu) => (
-                  <MenuCard
-                    key={menu.id}
-                    name={menu.name}
-                    price={menu.price}
-                    imageUrl={menu.imageUrl}
-                    currency="₦"
-                    id={menu.id}
-                    quantity={menu.quantity}
-                  />
+                  <MenuCard currency="₦" key={menu.id} menu={menu} />
                 ))}
               </div>
             </ScrollShadow>
@@ -64,15 +48,7 @@ const Dashboard = () => {
             <ScrollShadow className="w-full h-[75vh] overflow-y-scroll no-scrollbar">
               <div className="mt-4 grid grid-cols-4 gap-4">
                 {MENU.map((menu) => (
-                  <MenuCard
-                    key={menu.id}
-                    id={menu.id}
-                    name={menu.name}
-                    price={menu.price}
-                    imageUrl={menu.imageUrl}
-                    currency="₦"
-                    quantity={menu.quantity}
-                  />
+                  <MenuCard currency="₦" key={menu.id} menu={menu} />
                 ))}
               </div>
             </ScrollShadow>

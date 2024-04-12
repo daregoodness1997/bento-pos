@@ -48,7 +48,7 @@ export const MENU = [
     quantity: 1,
   },
   {
-    id: '6',
+    id: '7',
     name: 'Beans',
     price: 2500,
     imageUrl: 'https://source.unsplash.com/900x900/?beans',
@@ -56,7 +56,7 @@ export const MENU = [
     quantity: 1,
   },
   {
-    id: '6',
+    id: '8',
     name: 'Beans',
     price: 2500,
     imageUrl: 'https://source.unsplash.com/900x900/?beans',
@@ -64,7 +64,7 @@ export const MENU = [
     quantity: 1,
   },
   {
-    id: '6',
+    id: '9',
     name: 'Beans',
     price: 2500,
     imageUrl: 'https://source.unsplash.com/900x900/?beans',
@@ -72,7 +72,7 @@ export const MENU = [
     quantity: 1,
   },
   {
-    id: '6',
+    id: '10',
     name: 'Beans',
     price: 2500,
     imageUrl: 'https://source.unsplash.com/900x900/?beans',
@@ -80,7 +80,7 @@ export const MENU = [
     quantity: 1,
   },
   {
-    id: '6',
+    id: '11',
     name: 'Beans',
     price: 2500,
     imageUrl: 'https://source.unsplash.com/900x900/?beans',
@@ -88,7 +88,7 @@ export const MENU = [
     quantity: 1,
   },
   {
-    id: '6',
+    id: '12',
     name: 'Beans',
     price: 2500,
     imageUrl: 'https://source.unsplash.com/900x900/?beans',
@@ -96,7 +96,7 @@ export const MENU = [
     quantity: 1,
   },
   {
-    id: '6',
+    id: '13',
     name: 'Beans',
     price: 2500,
     imageUrl: 'https://source.unsplash.com/900x900/?beans',
@@ -104,7 +104,7 @@ export const MENU = [
     quantity: 1,
   },
   {
-    id: '6',
+    id: '14',
     name: 'Beans',
     price: 2500,
     imageUrl: 'https://source.unsplash.com/900x900/?beans',
@@ -112,7 +112,7 @@ export const MENU = [
     quantity: 1,
   },
   {
-    id: '6',
+    id: '15',
     name: 'Beans',
     price: 2500,
     imageUrl: 'https://source.unsplash.com/900x900/?beans',
@@ -120,7 +120,7 @@ export const MENU = [
     quantity: 1,
   },
   {
-    id: '6',
+    id: '16',
     name: 'Beans',
     price: 2500,
     imageUrl: 'https://source.unsplash.com/900x900/?beans',
@@ -128,7 +128,7 @@ export const MENU = [
     quantity: 1,
   },
   {
-    id: '6',
+    id: '17',
     name: 'Beans',
     price: 2500,
     imageUrl: 'https://source.unsplash.com/900x900/?beans',
@@ -136,7 +136,7 @@ export const MENU = [
     quantity: 1,
   },
   {
-    id: '6',
+    id: '18',
     name: 'Beans',
     price: 2500,
     imageUrl: 'https://source.unsplash.com/900x900/?beans',
@@ -144,7 +144,7 @@ export const MENU = [
     quantity: 1,
   },
   {
-    id: '6',
+    id: '19',
     name: 'Beans',
     price: 2500,
     imageUrl: 'https://source.unsplash.com/900x900/?beans',
@@ -152,7 +152,7 @@ export const MENU = [
     quantity: 1,
   },
   {
-    id: '6',
+    id: '20',
     name: 'Beans',
     price: 2500,
     imageUrl: 'https://source.unsplash.com/900x900/?beans',
@@ -160,7 +160,7 @@ export const MENU = [
     quantity: 1,
   },
   {
-    id: '6',
+    id: '21',
     name: 'Beans',
     price: 2500,
     imageUrl: 'https://source.unsplash.com/900x900/?beans',
@@ -168,7 +168,7 @@ export const MENU = [
     quantity: 1,
   },
   {
-    id: '6',
+    id: '22',
     name: 'Beans',
     price: 2500,
     imageUrl: 'https://source.unsplash.com/900x900/?beans',

@@ -1,8 +1,9 @@
-import React, { FC, memo } from 'react';
+import React, { FC, memo, useContext } from 'react';
 
 import { Button, Image, useDisclosure } from '@nextui-org/react';
 import { Icon } from '@iconify/react';
 import { CartCard, Modal } from 'components';
+import { OrderContext } from 'context';
 
 interface Props {
   children: React.ReactNode;
@@ -11,11 +12,15 @@ interface Props {
 const SideSection: FC<Props> = ({ children }) => {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
+  const {
+    state: { cartItems },
+    handlers: { handleRemoveFromCart, resetCart },
+  } = useContext(OrderContext.Context);
+
   const orderNo = 'Order#177384';
   const orderDate = '12th August 2021';
   const orderTotalPrice = '4000';
   const currency = '₦';
-  const cartItems = [];
 
   return (
     <div className="w-1/3 rounded-lg bg-stone-950">
@@ -35,13 +40,31 @@ const SideSection: FC<Props> = ({ children }) => {
         radius="none"
       />
       <div className="p-8 px-4 ">
-        {cartItems.length === 0 ? (
+        {cartItems.length > 0 ? (
+          <div className="flex justify-end my-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              color="danger"
+              onClick={resetCart}
+              radius="full"
+            >
+              Reset Cart
+            </Button>
+          </div>
+        ) : null}
+
+        {cartItems.length > 0 ? (
           <div className="flex flex-col gap-2">
-            <CartCard />
-            <CartCard />
-            <CartCard />
-            <CartCard />
-            <CartCard />
+            {cartItems.map((item) => (
+              <CartCard
+                key={item.id}
+                handleRemoveItem={() => handleRemoveFromCart(item.id)}
+                name={item.name}
+                quantity={item.quantity}
+                imageUrl={item.imageUrl}
+              />
+            ))}
 
             <div className="flex items-center gap-2 my-4">
               <Button variant="bordered" radius="full" size="lg">

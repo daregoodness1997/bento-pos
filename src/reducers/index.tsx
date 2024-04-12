@@ -78,7 +78,7 @@ function reducer(state: any, action: any): any {
       return { ...state };
     }
     case ActionTypes.REMOVE_FROM_CART: {
-      const itemId = String(action.payload);
+      const { id: itemId } = action.payload;
       state.cartItems = state.cartItems.filter(
         (cartItem: any) => String(cartItem.id) !== itemId,
       );
