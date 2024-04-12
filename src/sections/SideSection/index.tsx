@@ -35,7 +35,7 @@ const SideSection: FC<Props> = ({ children }) => {
         radius="none"
       />
       <div className="p-8 px-4 ">
-        {cartItems.length > 0 ? (
+        {cartItems.length === 0 ? (
           <div className="flex flex-col gap-2">
             <CartCard />
             <CartCard />

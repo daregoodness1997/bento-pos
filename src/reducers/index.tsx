@@ -1,8 +1,6 @@
 import {
-  Action,
   ActionTypes,
   Initial,
-  Item,
   retrieveCartItemsFromSessionStorage,
   storeCartItemsToSessionStorage,
 } from 'app';
@@ -21,7 +19,7 @@ initialState.totalPrice = initialState.cartItems.reduce((accumulator, item) => {
   return accumulator + Number(item.price) * item.quantity;
 }, 0);
 
-function reducer(state: Item, action: Action): Item {
+function reducer(state: any, action: any): any {
   switch (action.type) {
     case ActionTypes.SET_CART_ITEMS:
       return { ...state, cartItems: action.payload };
@@ -33,10 +31,10 @@ function reducer(state: Item, action: Action): Item {
       state.quantities[id] = (state.quantities[id] || 0) + 1;
 
       const existingItem = state.cartItems.find(
-        (cartItem) => String(cartItem.id) === String(id),
+        (cartItem: any) => String(cartItem.id) === String(id),
       );
       if (existingItem) {
-        state.cartItems = state.cartItems.map((cartItem) =>
+        state.cartItems = state.cartItems.map((cartItem: any) =>
           String(cartItem.id) === String(id)
             ? { ...cartItem, quantity: cartItem.quantity + 1 }
             : cartItem,
@@ -51,15 +49,15 @@ function reducer(state: Item, action: Action): Item {
       state.quantities[id] = (state.quantities[id] || 0) - 1;
 
       const existingItem = state.cartItems.find(
-        (cartItem) => String(cartItem.id) === String(id),
+        (cartItem: any) => String(cartItem.id) === String(id),
       );
       if (existingItem) {
-        state.cartItems = state.cartItems.map((cartItem) =>
+        state.cartItems = state.cartItems.map((cartItem: any) =>
           String(cartItem.id) === String(id)
             ? { ...cartItem, quantity: cartItem.quantity - 1 }
             : cartItem,
         );
-        utils.storeCartItemsToSessionStorage(state.cartItems);
+        storeCartItemsToSessionStorage(state.cartItems);
       }
 
       return { ...state };
@@ -67,12 +65,12 @@ function reducer(state: Item, action: Action): Item {
     case ActionTypes.ADD_TO_CART: {
       const item = action.payload;
       const existingItem = state.cartItems.find(
-        (cartItem) => String(cartItem.id) === String(item.id),
+        (cartItem: any) => String(cartItem.id) === String(item.id),
       );
       if (existingItem) {
         existingItem.quantity += 1;
       } else {
-        state.cartItems.push({ ...item, quantity: 1 } as types.CartItem);
+        state.cartItems.push({ ...item, quantity: 1 } as any);
       }
 
       storeCartItemsToSessionStorage(state.cartItems);
@@ -82,7 +80,7 @@ function reducer(state: Item, action: Action): Item {
     case ActionTypes.REMOVE_FROM_CART: {
       const itemId = String(action.payload);
       state.cartItems = state.cartItems.filter(
-        (cartItem) => String(cartItem.id) !== itemId,
+        (cartItem: any) => String(cartItem.id) !== itemId,
       );
       storeCartItemsToSessionStorage(state.cartItems);
 

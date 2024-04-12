@@ -12,3 +12,8 @@ export enum ActionTypes {
   REMOVE_FROM_CART = 'REMOVE_FROM_CART',
   RESET_CART = 'RESET_CART',
 }
+
+export enum Toast {
+  success = 'success',
+  warning = 'warning',
+}

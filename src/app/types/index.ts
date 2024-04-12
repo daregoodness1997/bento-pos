@@ -8,7 +8,7 @@ export type Item = {
   id: string;
   name: string;
   imageUrl: string;
-  price: string;
+  price: number | string;
   quantity: number;
 };
 
@@ -23,7 +23,7 @@ export type Cart = {
     handleIncreaseCount: (id: string) => void;
     handleDecreaseCount: (id: string) => void;
     handleRemoveFromCart: (id: string) => void;
-    handleAddToCart: (id: Item) => void;
+    handleAddToCart: (item: Item) => void;
   };
 };
 

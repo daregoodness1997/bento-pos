@@ -1,4 +1,3 @@
-import Provider from './Provider';
-import Context from './Context';
+import OrderContext from './OrderContext';
 
-export { Provider, Context };
+export { OrderContext };

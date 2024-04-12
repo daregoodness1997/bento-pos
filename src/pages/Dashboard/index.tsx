@@ -36,6 +36,8 @@ const Dashboard = () => {
                     price={menu.price}
                     imageUrl={menu.imageUrl}
                     currency="₦"
+                    id={menu.id}
+                    quantity={menu.quantity}
                   />
                 ))}
               </div>
@@ -51,6 +53,8 @@ const Dashboard = () => {
                     price={menu.price}
                     imageUrl={menu.imageUrl}
                     currency="₦"
+                    id={menu.id}
+                    quantity={menu.quantity}
                   />
                 ))}
               </div>
@@ -62,10 +66,12 @@ const Dashboard = () => {
                 {MENU.map((menu) => (
                   <MenuCard
                     key={menu.id}
+                    id={menu.id}
                     name={menu.name}
                     price={menu.price}
                     imageUrl={menu.imageUrl}
                     currency="₦"
+                    quantity={menu.quantity}
                   />
                 ))}
               </div>

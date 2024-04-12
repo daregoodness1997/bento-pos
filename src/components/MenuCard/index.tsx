@@ -1,17 +1,31 @@
-import React, { FC, memo } from 'react';
+import React, { FC, memo, useContext } from 'react';
 import { Card, CardBody, CardFooter, Image, Button } from '@nextui-org/react';
-import { ToastUtils } from 'utils';
+
+import { OrderContext } from 'context';
 
 interface Props {
+  id: string;
   imageUrl: string;
   name: string;
   currency: string;
-  price: number;
+  quantity: number;
+  price: number | string;
 }
 
-const MenuCard: FC<Props> = ({ imageUrl, name, price, currency }) => {
-  const handleAddToCart = () => {
-    ToastUtils.displayToast('success', 'Item added to cart');
+const MenuCard: FC<Props> = ({
+  id,
+  imageUrl,
+  name,
+  price,
+  currency,
+  quantity,
+}) => {
+  const {
+    handlers: { handleAddToCart },
+  } = useContext(OrderContext.Context);
+
+  const handleAddToCartClicked = () => {
+    handleAddToCart({ id, imageUrl, name, price, quantity });
   };
 
   return (
@@ -33,7 +47,7 @@ const MenuCard: FC<Props> = ({ imageUrl, name, price, currency }) => {
           radius="full"
           size="sm"
           variant="flat"
-          onClick={handleAddToCart}
+          onClick={handleAddToCartClicked}
         >
           Add Item
         </Button>
