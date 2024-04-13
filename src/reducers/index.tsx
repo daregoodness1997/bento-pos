@@ -88,6 +88,7 @@ function reducer(state: any, action: any): any {
 
     case ActionTypes.CREATE_ORDER: {
       const order = action.payload;
+      order.totalPrice = state.totalPrice;
       state.orders.push(order);
       storeOrdersToSessionStorage(state.orders);
 

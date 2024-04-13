@@ -2,7 +2,7 @@ import React, { FC, memo, useContext } from 'react';
 
 import { Button, Image, Input, useDisclosure } from '@nextui-org/react';
 import { Icon } from '@iconify/react';
-import { CartCard, Modal } from 'components';
+import { CartCard, Modal, PrintButton } from 'components';
 import { OrderContext } from 'context';
 import { ToastUtils } from 'utils';
 import { Toast } from 'app';
@@ -32,6 +32,8 @@ const SideSection: FC<Props> = ({ children }) => {
         createdAt: new Date(),
         createdBy: 'Admin',
         status: 'paid',
+        amountRecieved: 2000,
+        change: 0,
       });
       ToastUtils.displayToast(Toast.success, 'Order created successfully');
     } catch (err) {
@@ -120,6 +122,8 @@ const SideSection: FC<Props> = ({ children }) => {
         >
           <Input label="Amount Recieved" />
           <Input label="Change if any" />
+
+          <PrintButton />
         </Modal>
       </div>
     </div>

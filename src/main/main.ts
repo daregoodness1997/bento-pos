@@ -12,7 +12,7 @@ import path from 'path';
 import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
-// import { PosPrinter } from 'electron-pos-printer';
+import { PosPrintOptions, PosPrinter } from 'electron-pos-printer';
 
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
@@ -26,6 +26,27 @@ class AppUpdater {
 }
 
 let mainWindow: BrowserWindow | null = null;
+
+ipcMain.handle('print', async (event, data) => {
+  console.log('printer invoked');
+  try {
+    const printOptions: PosPrintOptions = {
+      preview: false,
+      margin: '0 0 0 0',
+      copies: 1,
+      timeOutPerLine: 400,
+      pageSize: '58mm',
+      boolean: true,
+      silent: true,
+    };
+
+    await PosPrinter.print(data, printOptions);
+    return 'Printing successful';
+  } catch (error) {
+    console.error(error);
+    throw new Error(`Printing failed ${error}`);
+  }
+});
 
 ipcMain.on('ipc-example', async (event, arg) => {
   const msgTemplate = (pingPong: string) => `IPC test: ${pingPong}`;
@@ -45,24 +66,6 @@ if (isDebug) {
   require('electron-debug')();
 }
 
-// ipcMain.handle('print', async (event, data) => {
-//   const options = {
-//     preview: false,
-//     margin: '0 0 0 0',
-//     copies: 1,
-//     printerName: 'XP-80C',
-//     timeOutPerLine: 400,
-//     pageSize: '80mm',
-//   };
-
-//   try {
-//     await PosPrinter.print(data, options);
-//     return 'Printing successful';
-//   } catch (error) {
-//     console.error(error);
-//     throw new Error('Printing failed');
-//   }
-// });
 const installExtensions = async () => {
   const installer = require('electron-devtools-installer');
   const forceDownload = !!process.env.UPGRADE_EXTENSIONS;

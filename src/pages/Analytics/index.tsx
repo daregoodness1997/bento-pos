@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 
 import { DashboardLayout } from 'layouts';
-import { StatCard } from 'components';
+import { DefaultStatCard } from 'components';
 
 const Analytics = () => {
   const stats = [
@@ -32,10 +32,10 @@ const Analytics = () => {
   ];
 
   return (
-    <DashboardLayout hasCart>
+    <DashboardLayout>
       <div className="flex items-center justify-between gap-4">
         {stats.map((stat) => (
-          <StatCard
+          <DefaultStatCard
             key={stat.id}
             title={stat.title}
             value={stat.value}

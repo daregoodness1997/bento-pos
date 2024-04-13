@@ -18,6 +18,9 @@ export type Order = {
   createdAt: Date;
   createdBy: string;
   status: keyof typeof OrderStatus;
+  amountRecieved: number;
+  change: number;
+  totalPrice?: number;
 };
 
 export type Cart = {

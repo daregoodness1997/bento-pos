@@ -33,6 +33,18 @@ const statusColorMap = {
 
 const INITIAL_VISIBLE_COLUMNS = ['name', 'role', 'status', 'actions'];
 
+interface Column {
+  uid: string;
+}
+
+interface UserType {
+  name: string;
+  avatar: string;
+  email: string;
+  team: string;
+  status: keyof typeof statusColorMap;
+}
+
 const Table = () => {
   const [filterValue, setFilterValue] = React.useState('');
   const [selectedKeys, setSelectedKeys] = React.useState(new Set([]));
@@ -50,9 +62,9 @@ const Table = () => {
   const hasSearchFilter = Boolean(filterValue);
 
   const headerColumns = React.useMemo(() => {
-    if (visibleColumns === 'all') return columns;
+    if (visibleColumns.has('all')) return columns;
 
-    return columns.filter((column) =>
+    return columns.filter((column: Column) =>
       Array.from(visibleColumns).includes(column.uid),
     );
   }, [visibleColumns]);
@@ -75,7 +87,7 @@ const Table = () => {
     }
 
     return filteredUsers;
-  }, [users, filterValue, statusFilter]);
+  }, [filterValue, statusFilter, hasSearchFilter]);
 
   const pages = Math.ceil(filteredItems.length / rowsPerPage);
 
@@ -90,67 +102,76 @@ const Table = () => {
     return [...items].sort((a, b) => {
       const first = a[sortDescriptor.column];
       const second = b[sortDescriptor.column];
-      const cmp = first < second ? -1 : first > second ? 1 : 0;
-
+      let cmp = 0;
+      if (first < second) {
+        cmp = -1;
+      } else if (first > second) {
+        cmp = 1;
+      }
       return sortDescriptor.direction === 'descending' ? -cmp : cmp;
     });
   }, [sortDescriptor, items]);
 
-  const renderCell = React.useCallback((user, columnKey) => {
-    const cellValue = user[columnKey];
+  const renderCell = React.useCallback(
+    (user: UserType, columnKey: keyof UserType) => {
+      const cellValue = user[columnKey];
 
-    switch (columnKey) {
-      case 'name':
-        return (
-          <User
-            avatarProps={{ radius: 'lg', src: user.avatar }}
-            description={user.email}
-            name={cellValue}
-          >
-            {user.email}
-          </User>
-        );
-      case 'role':
-        return (
-          <div className="flex flex-col">
-            <p className="text-bold text-small capitalize">{cellValue}</p>
-            <p className="text-bold text-tiny capitalize text-default-400">
-              {user.team}
-            </p>
-          </div>
-        );
-      case 'status':
-        return (
-          <Chip
-            className="capitalize"
-            color={statusColorMap[user.status]}
-            size="sm"
-            variant="flat"
-          >
-            {cellValue}
-          </Chip>
-        );
-      case 'actions':
-        return (
-          <div className="relative flex justify-end items-center gap-2">
-            <Dropdown>
-              <DropdownTrigger>
-                <Button isIconOnly size="sm" variant="light">
-                  <VerticalDotsIcon className="text-default-300" />
-                </Button>
-              </DropdownTrigger>
-              <DropdownMenu>
-                <DropdownItem>View</DropdownItem>
-                <DropdownItem>Edit</DropdownItem>
-                <DropdownItem>Delete</DropdownItem>
-              </DropdownMenu>
-            </Dropdown>
-          </div>
-        );
-      default:
-        return cellValue;
-    }
-  }, []);
+      switch (columnKey) {
+        case 'name':
+          return (
+            <User
+              avatarProps={{ radius: 'lg', src: user.avatar }}
+              description={user.email}
+              name={cellValue as string} // Ensure cellValue is a string
+            >
+              {user.email}
+            </User>
+          );
+        case 'role':
+          return (
+            <div className="flex flex-col">
+              <p className="text-bold text-small capitalize">
+                {cellValue as string}
+              </p>
+              <p className="text-bold text-tiny capitalize text-default-400">
+                {user.team}
+              </p>
+            </div>
+          );
+        case 'status':
+          return (
+            <Chip
+              className="capitalize"
+              color={statusColorMap[user.status]}
+              size="sm"
+              variant="flat"
+            >
+              {cellValue as string}
+            </Chip>
+          );
+        case 'actions':
+          return (
+            <div className="relative flex justify-end items-center gap-2">
+              <Dropdown>
+                <DropdownTrigger>
+                  <Button isIconOnly size="sm" variant="light">
+                    <VerticalDotsIcon className="text-default-300" />
+                  </Button>
+                </DropdownTrigger>
+                <DropdownMenu>
+                  <DropdownItem>View</DropdownItem>
+                  <DropdownItem>Edit</DropdownItem>
+                  <DropdownItem>Delete</DropdownItem>
+                </DropdownMenu>
+              </Dropdown>
+            </div>
+          );
+        default:
+          return cellValue as string; // Ensure the default case returns a string
+      }
+    },
+    [],
+  );
 
   const onNextPage = React.useCallback(() => {
     if (page < pages) {
@@ -169,7 +190,7 @@ const Table = () => {
     setPage(1);
   }, []);
 
-  const onSearchChange = React.useCallback((value) => {
+  const onSearchChange = React.useCallback((value: string) => {
     if (value) {
       setFilterValue(value);
       setPage(1);
