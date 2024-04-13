@@ -6,6 +6,7 @@ import { StatCard as DefaultStatCard } from './StatCard';
 import CartCard from './CartCard';
 import Modal from './Modal';
 import PrintButton from './PrintButton';
+import Table from './Table';
 
 export * from './icons';
 
@@ -18,4 +19,5 @@ export {
   CartCard,
   Modal,
   PrintButton,
+  Table,
 };

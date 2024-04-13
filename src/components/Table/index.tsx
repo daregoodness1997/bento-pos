@@ -16,13 +16,10 @@ import {
   User,
   Pagination,
 } from '@nextui-org/react';
+import { Icon } from '@iconify/react';
 
 import { CapitalizeUtils } from 'utils';
 
-import { PlusIcon } from './PlusIcon';
-import { VerticalDotsIcon } from './VerticalDotsIcon';
-import { SearchIcon } from './SearchIcon';
-import { ChevronDownIcon } from './ChevronDownIcon';
 import { columns, users, statusOptions } from './data';
 
 const statusColorMap = {
@@ -38,21 +35,29 @@ interface Column {
 }
 
 interface UserType {
+  id: number;
   name: string;
+  role: string;
+  team: string;
+  status: string;
+  age: string;
   avatar: string;
   email: string;
-  team: string;
-  status: keyof typeof statusColorMap;
+  [key: string]: any;
 }
+
+type SelectedKeysType = Set<string>;
 
 const Table = () => {
   const [filterValue, setFilterValue] = React.useState('');
-  const [selectedKeys, setSelectedKeys] = React.useState(new Set([]));
+  const [selectedKeys, setSelectedKeys] = React.useState<SelectedKeysType>(
+    new Set([]),
+  );
   const [visibleColumns, setVisibleColumns] = React.useState(
     new Set(INITIAL_VISIBLE_COLUMNS),
   );
   const [statusFilter, setStatusFilter] = React.useState('all');
-  const [rowsPerPage, setRowsPerPage] = React.useState(5);
+  const [rowsPerPage, setRowsPerPage] = React.useState(10);
   const [sortDescriptor, setSortDescriptor] = React.useState({
     column: 'age',
     direction: 'ascending',
@@ -127,7 +132,7 @@ const Table = () => {
               {user.email}
             </User>
           );
-        case 'role':
+        case 'role' as keyof UserType:
           return (
             <div className="flex flex-col">
               <p className="text-bold text-small capitalize">
@@ -142,20 +147,34 @@ const Table = () => {
           return (
             <Chip
               className="capitalize"
-              color={statusColorMap[user.status]}
+              color={
+                statusColorMap[user.status] as
+                  | 'success'
+                  | 'danger'
+                  | 'warning'
+                  | 'default'
+                  | 'primary'
+                  | 'secondary'
+                  | undefined
+              }
               size="sm"
               variant="flat"
             >
               {cellValue as string}
             </Chip>
           );
-        case 'actions':
+        case 'actions' as keyof UserType:
           return (
             <div className="relative flex justify-end items-center gap-2">
               <Dropdown>
                 <DropdownTrigger>
                   <Button isIconOnly size="sm" variant="light">
-                    <VerticalDotsIcon className="text-default-300" />
+                    <Icon
+                      icon="mynaui:dots-vertical"
+                      width="24"
+                      height="24"
+                      className="text-default-300"
+                    />
                   </Button>
                 </DropdownTrigger>
                 <DropdownMenu>
@@ -167,7 +186,7 @@ const Table = () => {
             </div>
           );
         default:
-          return cellValue as string; // Ensure the default case returns a string
+          return cellValue as string;
       }
     },
     [],
@@ -212,7 +231,7 @@ const Table = () => {
             isClearable
             className="w-full sm:max-w-[44%]"
             placeholder="Search by name..."
-            startContent={<SearchIcon />}
+            startContent={<Icon icon="mynaui:search" width="24" height="24" />}
             value={filterValue}
             onClear={() => onClear()}
             onValueChange={onSearchChange}
@@ -221,7 +240,9 @@ const Table = () => {
             <Dropdown>
               <DropdownTrigger className="hidden sm:flex">
                 <Button
-                  endContent={<ChevronDownIcon className="text-small" />}
+                  endContent={
+                    <Icon icon="mynaui:chevron-down" width="16" height="16" />
+                  }
                   variant="flat"
                 >
                   Status
@@ -245,7 +266,9 @@ const Table = () => {
             <Dropdown>
               <DropdownTrigger className="hidden sm:flex">
                 <Button
-                  endContent={<ChevronDownIcon className="text-small" />}
+                  endContent={
+                    <Icon icon="mynaui:chevron-down" width="16" height="16" />
+                  }
                   variant="flat"
                 >
                   Columns
@@ -261,12 +284,15 @@ const Table = () => {
               >
                 {columns.map((column) => (
                   <DropdownItem key={column.uid} className="capitalize">
-                    {capitalize(column.name)}
+                    {CapitalizeUtils.capitalize(column.name)}
                   </DropdownItem>
                 ))}
               </DropdownMenu>
             </Dropdown>
-            <Button color="primary" endContent={<PlusIcon />}>
+            <Button
+              color="primary"
+              endContent={<Icon icon="mynaui:plus" width="24" height="24" />}
+            >
               Add New
             </Button>
           </div>
@@ -306,7 +332,7 @@ const Table = () => {
     return (
       <div className="py-2 px-2 flex justify-between items-center">
         <span className="w-[30%] text-small text-default-400">
-          {selectedKeys === 'all'
+          {selectedKeys.has('all')
             ? 'All items selected'
             : `${selectedKeys.size} of ${filteredItems.length} selected`}
         </span>
@@ -355,7 +381,7 @@ const Table = () => {
       bottomContent={bottomContent}
       bottomContentPlacement="outside"
       classNames={{
-        wrapper: 'max-h-[382px]',
+        wrapper: 'min-h-[382px]',
       }}
       selectedKeys={selectedKeys}
       selectionMode="multiple"
@@ -376,7 +402,7 @@ const Table = () => {
           </TableColumn>
         )}
       </TableHeader>
-      <TableBody emptyContent={'No users found'} items={sortedItems}>
+      <TableBody emptyContent="No users found" items={sortedItems}>
         {(item) => (
           <TableRow key={item.id}>
             {(columnKey) => (
