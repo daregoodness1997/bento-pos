@@ -13,6 +13,8 @@ import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import { PosPrintOptions, PosPrinter } from 'electron-pos-printer';
+import fs from 'fs';
+import axios from 'axios';
 
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
@@ -28,7 +30,6 @@ class AppUpdater {
 let mainWindow: BrowserWindow | null = null;
 
 ipcMain.handle('print', async (event, data) => {
-  console.log('printer invoked');
   try {
     const printOptions: PosPrintOptions = {
       preview: false,
@@ -45,6 +46,28 @@ ipcMain.handle('print', async (event, data) => {
   } catch (error) {
     console.error(error);
     throw new Error(`Printing failed ${error}`);
+  }
+});
+ipcMain.handle('download', async (event, data) => {
+  try {
+    const { url, id } = data;
+
+    const response = await axios.get(url, { responseType: 'arraybuffer' });
+    const buffer = Buffer.from(response.data, 'binary');
+    const imagesDir = path.join(__dirname, 'images');
+    const filePath = path.join(imagesDir, `${id}.jpg`);
+
+    // Ensure the directory exists
+    if (!fs.existsSync(imagesDir)) {
+      fs.mkdirSync(imagesDir, { recursive: true });
+    }
+
+    fs.writeFileSync(filePath, buffer);
+
+    return filePath;
+  } catch (error) {
+    console.error(error);
+    throw new Error(`Download failed: ${error}`);
   }
 });
 

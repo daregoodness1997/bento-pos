@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, memo, FC, useCallback, useMemo } from 'react';
 import {
   Table as BTable,
   TableHeader,
@@ -34,7 +34,7 @@ interface Column {
   uid: string;
 }
 
-interface UserType {
+interface DataType {
   id: number;
   name: string;
   role: string;
@@ -49,32 +49,32 @@ interface UserType {
 type SelectedKeysType = Set<string>;
 
 const Table = () => {
-  const [filterValue, setFilterValue] = React.useState('');
-  const [selectedKeys, setSelectedKeys] = React.useState<SelectedKeysType>(
+  const [filterValue, setFilterValue] = useState('');
+  const [selectedKeys, setSelectedKeys] = useState<SelectedKeysType>(
     new Set([]),
   );
-  const [visibleColumns, setVisibleColumns] = React.useState(
+  const [visibleColumns, setVisibleColumns] = useState(
     new Set(INITIAL_VISIBLE_COLUMNS),
   );
-  const [statusFilter, setStatusFilter] = React.useState('all');
-  const [rowsPerPage, setRowsPerPage] = React.useState(10);
-  const [sortDescriptor, setSortDescriptor] = React.useState({
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [sortDescriptor, setSortDescriptor] = useState({
     column: 'age',
     direction: 'ascending',
   });
-  const [page, setPage] = React.useState(1);
+  const [page, setPage] = useState(1);
 
   const hasSearchFilter = Boolean(filterValue);
 
-  const headerColumns = React.useMemo(() => {
-    if (visibleColumns.has('all')) return columns;
+  const headerColumns = useMemo(() => {
+    if (visibleColumns === 'all') return columns;
 
     return columns.filter((column: Column) =>
       Array.from(visibleColumns).includes(column.uid),
     );
   }, [visibleColumns]);
 
-  const filteredItems = React.useMemo(() => {
+  const filteredItems = useMemo(() => {
     let filteredUsers = [...users];
 
     if (hasSearchFilter) {
@@ -96,14 +96,14 @@ const Table = () => {
 
   const pages = Math.ceil(filteredItems.length / rowsPerPage);
 
-  const items = React.useMemo(() => {
+  const items = useMemo(() => {
     const start = (page - 1) * rowsPerPage;
     const end = start + rowsPerPage;
 
     return filteredItems.slice(start, end);
   }, [page, filteredItems, rowsPerPage]);
 
-  const sortedItems = React.useMemo(() => {
+  const sortedItems = useMemo(() => {
     return [...items].sort((a, b) => {
       const first = a[sortDescriptor.column];
       const second = b[sortDescriptor.column];
@@ -117,8 +117,8 @@ const Table = () => {
     });
   }, [sortDescriptor, items]);
 
-  const renderCell = React.useCallback(
-    (user: UserType, columnKey: keyof UserType) => {
+  const renderCell = useCallback(
+    (user: DataType, columnKey: keyof DataType) => {
       const cellValue = user[columnKey];
 
       switch (columnKey) {
@@ -132,7 +132,7 @@ const Table = () => {
               {user.email}
             </User>
           );
-        case 'role' as keyof UserType:
+        case 'role' as keyof DataType:
           return (
             <div className="flex flex-col">
               <p className="text-bold text-small capitalize">
@@ -163,7 +163,7 @@ const Table = () => {
               {cellValue as string}
             </Chip>
           );
-        case 'actions' as keyof UserType:
+        case 'actions' as keyof DataType:
           return (
             <div className="relative flex justify-end items-center gap-2">
               <Dropdown>
@@ -192,24 +192,24 @@ const Table = () => {
     [],
   );
 
-  const onNextPage = React.useCallback(() => {
+  const onNextPage = useCallback(() => {
     if (page < pages) {
       setPage(page + 1);
     }
   }, [page, pages]);
 
-  const onPreviousPage = React.useCallback(() => {
+  const onPreviousPage = useCallback(() => {
     if (page > 1) {
       setPage(page - 1);
     }
   }, [page]);
 
-  const onRowsPerPageChange = React.useCallback((e) => {
+  const onRowsPerPageChange = useCallback((e) => {
     setRowsPerPage(Number(e.target.value));
     setPage(1);
   }, []);
 
-  const onSearchChange = React.useCallback((value: string) => {
+  const onSearchChange = useCallback((value: string) => {
     if (value) {
       setFilterValue(value);
       setPage(1);
@@ -218,12 +218,12 @@ const Table = () => {
     }
   }, []);
 
-  const onClear = React.useCallback(() => {
+  const onClear = useCallback(() => {
     setFilterValue('');
     setPage(1);
   }, []);
 
-  const topContent = React.useMemo(() => {
+  const topContent = useMemo(() => {
     return (
       <div className="flex flex-col gap-4">
         <div className="flex justify-between gap-3 items-end">
@@ -328,11 +328,11 @@ const Table = () => {
     onClear,
   ]);
 
-  const bottomContent = React.useMemo(() => {
+  const bottomContent = useMemo(() => {
     return (
       <div className="py-2 px-2 flex justify-between items-center">
         <span className="w-[30%] text-small text-default-400">
-          {selectedKeys.has('all')
+          {selectedKeys === 'all'
             ? 'All items selected'
             : `${selectedKeys.size} of ${filteredItems.length} selected`}
         </span>
@@ -381,7 +381,7 @@ const Table = () => {
       bottomContent={bottomContent}
       bottomContentPlacement="outside"
       classNames={{
-        wrapper: 'min-h-[382px]',
+        wrapper: 'h-full',
       }}
       selectedKeys={selectedKeys}
       selectionMode="multiple"
@@ -415,4 +415,4 @@ const Table = () => {
   );
 };
 
-export default Table;
+export default memo(Table);

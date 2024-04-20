@@ -10,6 +10,7 @@ export type Item = {
   imageUrl: string;
   price: number | string;
   quantity: number;
+  type?: string;
 };
 
 export type Order = {

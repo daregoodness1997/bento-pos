@@ -1,19 +1,18 @@
 .nav-link {
   cursor: pointer;
-  padding: 32px 20px;
-  border-radius: 8px;
+  padding: 14px 2px;
   display: block;
-  width: 65%;
+  width: 100%;
   margin: 0 auto;
   display: flex;
   align-items: center;
   gap: 8px;
   justify-content: center;
   flex-direction: column;
-  font-size: 1rem;
+  font-size: 0.75rem;
   font-weight: 400;
-  box-shadow: 0 4px 20px #0000001a;
-  background-color: #000;
+  background-color: #1b55f500;
+  border-radius: 4px;
 }
 
 .nav-link:hover {
@@ -23,7 +22,7 @@
 }
 
 .nav-link.active {
-  background-color: #1b55f5;
+  border-right: 4px solid #1b55f5;
   color: #fff;
-  box-shadow: 20px 20px 32px #1b55f51a;
+  background-color: #000;
 }

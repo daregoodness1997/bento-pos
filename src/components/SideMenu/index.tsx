@@ -10,8 +10,8 @@ interface Props {}
 const SideMenu: FC<Props> = () => {
   const { pathname } = useLocation();
   return (
-    <div className="side-menu px-2 py-4 ">
-      <div className="mt-8 flex flex-col gap-8">
+    <div className="side-menu">
+      <div className="flex flex-col">
         <NavLink
           name="New Order"
           path="/app"

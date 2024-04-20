@@ -1,4 +1,6 @@
-export const MENU = [
+import { Item } from 'app';
+
+export const MENU: Item[] = [
   {
     id: '1',
     name: 'Chicken Wings',

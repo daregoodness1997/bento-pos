@@ -42,7 +42,7 @@ const SideSection: FC<Props> = ({ children }) => {
   };
 
   return (
-    <div className="w-1/3 rounded-lg bg-stone-950">
+    <div className="w-1/3 rounded-lg bg-stone-950 max-h-[90vh] overflow-y-scroll no-scrollbar">
       <header className="px-2 py-4 flex items-center justify-between">
         <div className="flex-col">
           <h3 className="p-0 m-0">{orderNo}</h3>

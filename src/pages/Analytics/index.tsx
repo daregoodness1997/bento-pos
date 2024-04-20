@@ -34,7 +34,7 @@ const Analytics = () => {
   return (
     <DashboardLayout>
       <div>
-        <div className="flex items-center justify-between gap-4 px-4 ">
+        <div className="flex items-center justify-between gap-4 px-8 ">
           {stats.map((stat) => (
             <DefaultStatCard
               key={stat.id}

@@ -3,6 +3,7 @@ import { Input, Button, ScrollShadow, Tabs, Tab } from '@nextui-org/react';
 
 import { DashboardLayout } from 'layouts';
 import { MenuCard, SearchIcon } from 'components';
+
 import { MENU } from './constants';
 
 const Dashboard = () => {
