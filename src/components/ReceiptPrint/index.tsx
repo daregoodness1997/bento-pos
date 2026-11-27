@@ -5,22 +5,32 @@ import { RECEIPT_COPIES, RECEIPT_COPY_LABELS } from 'utils/receipt';
 import type { ReceiptCopy } from 'utils/receipt';
 import type { OrderRecord } from '../../context/OrderContext';
 
-interface Props {
+interface ReceiptBrand {
+  storeName: string;
+  terminalId: string;
+}
+
+interface Props extends ReceiptBrand {
   receipt: OrderRecord | null;
 }
 
-interface ReceiptCopyProps {
+interface ReceiptCopyProps extends ReceiptBrand {
   receipt: OrderRecord;
   copy: ReceiptCopy;
 }
 
-const ReceiptCopyPrint = ({ receipt, copy }: ReceiptCopyProps) => (
+const ReceiptCopyPrint = ({
+  copy,
+  receipt,
+  storeName,
+  terminalId,
+}: ReceiptCopyProps) => (
   <div aria-hidden="true" className="receipt-print" data-copy={copy}>
     <div className="receipt-print__brand">
       <span className="receipt-print__mark">B</span>
       <div>
-        <strong>Bento Kitchen</strong>
-        <span>Main counter · Register 02</span>
+        <strong>{storeName}</strong>
+        <span>Main counter · {terminalId}</span>
       </div>
     </div>
 
@@ -74,18 +84,26 @@ const ReceiptCopyPrint = ({ receipt, copy }: ReceiptCopyProps) => (
   </div>
 );
 
-const ReceiptPrint = memo(({ receipt }: Props) => {
-  if (!receipt) {
-    return null;
-  }
+const ReceiptPrint = memo(
+  ({ receipt, storeName, terminalId }: Props) => {
+    if (!receipt) {
+      return null;
+    }
 
-  return (
-    <div aria-hidden="true" className="receipt-print-stack">
-      {RECEIPT_COPIES.map((copy) => (
-        <ReceiptCopyPrint key={copy} copy={copy} receipt={receipt} />
-      ))}
-    </div>
-  );
-});
+    return (
+      <div aria-hidden="true" className="receipt-print-stack">
+        {RECEIPT_COPIES.map((copy) => (
+          <ReceiptCopyPrint
+            key={copy}
+            copy={copy}
+            receipt={receipt}
+            storeName={storeName}
+            terminalId={terminalId}
+          />
+        ))}
+      </div>
+    );
+  },
+);
 
 export default ReceiptPrint;

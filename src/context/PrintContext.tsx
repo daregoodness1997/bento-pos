@@ -10,6 +10,7 @@ import { flushSync } from 'react-dom';
 
 import ReceiptPrint from '../components/ReceiptPrint';
 import type { OrderRecord } from './OrderContext';
+import { useStore } from './StoreContext';
 import { buildEscPosReceipt } from '../utils/escpos';
 import { RECEIPT_COPIES } from '../utils/receipt';
 import {
@@ -120,6 +121,8 @@ const getPrintBridge = () =>
   typeof window === 'undefined' ? undefined : window.electron;
 
 export const PrintProvider = ({ children }: Props) => {
+  const { data: storeData } = useStore();
+  const { storeName, terminalId } = storeData.settings;
   const [receipt, setReceipt] = useState<OrderRecord | null>(null);
   const [status, setStatus] = useState('');
   const [networkPrinterState, setNetworkPrinterState] =
@@ -217,7 +220,7 @@ export const PrintProvider = ({ children }: Props) => {
   const printThermal = useCallback(
     async (order: OrderRecord) => {
       const receiptBytes = RECEIPT_COPIES.map((copy) =>
-        buildEscPosReceipt(order, copy),
+        buildEscPosReceipt(order, copy, storeName, terminalId),
       );
       const sendCopies = async (send: (bytes: Uint8Array) => Promise<void>) => {
         await receiptBytes.reduce(
@@ -261,7 +264,7 @@ export const PrintProvider = ({ children }: Props) => {
         setStatus(errorMessage(error, 'Thermal print failed.'));
       }
     },
-    [networkPrinterState, thermalTransportState],
+    [networkPrinterState, storeName, terminalId, thermalTransportState],
   );
 
   const connectThermal = useCallback(
@@ -337,7 +340,11 @@ export const PrintProvider = ({ children }: Props) => {
   return (
     <PrintContext.Provider value={value}>
       {children}
-      <ReceiptPrint receipt={receipt} />
+      <ReceiptPrint
+        receipt={receipt}
+        storeName={storeName}
+        terminalId={terminalId}
+      />
     </PrintContext.Provider>
   );
 };

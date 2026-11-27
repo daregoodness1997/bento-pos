@@ -60,6 +60,8 @@ const wrapText = (value: string, width: number) => {
 export const buildEscPosReceipt = (
   order: OrderRecord,
   copy: ReceiptCopy = 'customer',
+  storeName = 'BentoPOS',
+  terminalId = 'Register 02',
 ) => {
   const bytes: number[] = [];
 
@@ -68,10 +70,10 @@ export const buildEscPosReceipt = (
   push(bytes, [ESC, 97, 1]);
   push(bytes, [ESC, 69, 1]);
   push(bytes, [GS, 33, 17]);
-  writeLine(bytes, 'BENTO KITCHEN');
+  writeLine(bytes, storeName.toUpperCase());
   push(bytes, [GS, 33, 0]);
   push(bytes, [ESC, 69, 0]);
-  writeLine(bytes, 'Main counter');
+  writeLine(bytes, `Main counter · ${terminalId}`);
   push(bytes, [ESC, 69, 1]);
   writeLine(bytes, RECEIPT_COPY_LABELS[copy]);
   push(bytes, [ESC, 69, 0]);
