@@ -1,8 +1,12 @@
-import { memo, useEffect, useState } from 'react';
+import { memo, useEffect } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
 
 import { usePrint } from 'context';
 import type { ThermalTransport } from 'context';
-import { AppInput } from '../ui';
+import { networkPrinterSchema } from 'schemas/forms';
+import type { NetworkPrinterValues } from 'schemas/forms';
+import { AppInput, Field } from '../ui';
 
 const TRANSPORT_OPTIONS: Array<{
   label: string;
@@ -32,22 +36,28 @@ const ThermalPrinterPanel = memo(() => {
     usbReady,
     usbDeviceLabel,
   } = usePrint();
-  const [host, setHost] = useState(networkPrinter?.host ?? '');
-  const [port, setPort] = useState(String(networkPrinter?.port ?? 9100));
+  const {
+    formState: { errors },
+    handleSubmit,
+    register,
+    reset,
+  } = useForm<NetworkPrinterValues>({
+    defaultValues: {
+      host: networkPrinter?.host ?? '',
+      port: String(networkPrinter?.port ?? 9100),
+    },
+    resolver: zodResolver(networkPrinterSchema),
+  });
 
   useEffect(() => {
-    setHost(networkPrinter?.host ?? '');
-    setPort(String(networkPrinter?.port ?? 9100));
-  }, [networkPrinter]);
+    reset({
+      host: networkPrinter?.host ?? '',
+      port: String(networkPrinter?.port ?? 9100),
+    });
+  }, [networkPrinter, reset]);
 
-  const handleSave = () => {
-    const parsedPort = Number(port);
-
-    if (!host.trim() || !Number.isInteger(parsedPort) || parsedPort <= 0) {
-      return;
-    }
-
-    setNetworkPrinter({ host: host.trim(), port: parsedPort });
+  const handleSave = (values: NetworkPrinterValues) => {
+    setNetworkPrinter({ host: values.host.trim(), port: Number(values.port) });
   };
 
   return (
@@ -100,39 +110,33 @@ const ThermalPrinterPanel = memo(() => {
       )}
 
       {thermalTransport === 'network' ? (
-        <>
+        <form noValidate onSubmit={handleSubmit(handleSave)}>
           <div className="field-grid">
-            <label className="field-label" htmlFor="printer-host">
-              <span>Printer IP</span>
+            <Field label="Printer IP" error={errors.host?.message}>
               <AppInput
                 aria-label="Printer IP"
                 id="printer-host"
-                onChange={(event) => setHost(event.target.value)}
+                isInvalid={Boolean(errors.host)}
                 placeholder="192.168.1.50"
-                value={host}
+                {...register('host')}
               />
-            </label>
-            <label className="field-label" htmlFor="printer-port">
-              <span>Port</span>
+            </Field>
+            <Field label="Port" error={errors.port?.message}>
               <AppInput
                 aria-label="Port"
                 id="printer-port"
                 inputMode="numeric"
-                onChange={(event) => setPort(event.target.value)}
-                value={port}
+                isInvalid={Boolean(errors.port)}
+                {...register('port')}
               />
-            </label>
+            </Field>
           </div>
           <div className="pin-settings__actions">
-            <button
-              className="primary-button"
-              onClick={handleSave}
-              type="button"
-            >
+            <button className="primary-button" type="submit">
               Save network printer
             </button>
           </div>
-        </>
+        </form>
       ) : (
         <>
           <div className="pin-settings__actions">

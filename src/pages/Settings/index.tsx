@@ -1,10 +1,14 @@
-import React, { memo, useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Switch } from '@nextui-org/react';
+import { useForm } from 'react-hook-form';
 import { useSearchParams } from 'react-router-dom';
 
 import { DashboardLayout } from 'layouts';
-import { AppInput, PageHeader, ThermalPrinterPanel } from 'components';
-import { DEFAULT_PIN, useAuth, useStore } from 'context';
+import { AppInput, Field, PageHeader, ThermalPrinterPanel } from 'components';
+import { DEFAULT_PIN, useAuth, useConfirm, useStore } from 'context';
+import { pinSchema } from 'schemas/forms';
+import type { PinValues } from 'schemas/forms';
 import { DEFAULT_SETTINGS } from 'store/seed';
 import type { AppSettings } from 'types/store';
 import Setup from '../Setup';
@@ -25,16 +29,23 @@ const readSection = (value: string | null): Section =>
 const Settings = () => {
   const { data, updateSettings } = useStore();
   const { setPin: updatePin, lock, pin } = useAuth();
+  const confirmAction = useConfirm();
   const [searchParams, setSearchParams] = useSearchParams();
   const [section, setSection] = useState<Section>(() =>
     readSection(searchParams.get('section')),
   );
   const [draft, setDraft] = useState<AppSettings>(data.settings);
   const [saved, setSaved] = useState(false);
-  const [currentPin, setCurrentPin] = useState('');
-  const [nextPin, setNextPin] = useState('');
-  const [confirmPin, setConfirmPin] = useState('');
   const [pinMessage, setPinMessage] = useState('');
+  const {
+    formState: { errors },
+    handleSubmit,
+    register,
+    reset,
+  } = useForm<PinValues>({
+    defaultValues: { currentPin: '', nextPin: '', confirmPin: '' },
+    resolver: zodResolver(pinSchema),
+  });
 
   useEffect(() => {
     setDraft(data.settings);
@@ -66,24 +77,26 @@ const Settings = () => {
 
   const handleDiscard = () => {
     setDraft({ ...DEFAULT_SETTINGS });
-    setCurrentPin('');
-    setNextPin('');
-    setConfirmPin('');
+    reset();
     setPinMessage('');
   };
 
-  const handlePinSave = () => {
-    if (nextPin !== confirmPin) {
-      setPinMessage('The new PIN entries do not match.');
+  const handlePinSave = async (values: PinValues) => {
+    setPinMessage('');
+    if (
+      !(await confirmAction('Replace the register unlock PIN?', {
+        title: 'Update PIN?',
+        confirmLabel: 'Update PIN',
+        tone: 'primary',
+      }))
+    ) {
       return;
     }
-    if (!updatePin(currentPin, nextPin)) {
+    if (!updatePin(values.currentPin, values.nextPin)) {
       setPinMessage('Check the current PIN and use four digits.');
       return;
     }
-    setCurrentPin('');
-    setNextPin('');
-    setConfirmPin('');
+    reset();
     setPinMessage('PIN updated. Use it the next time the register locks.');
   };
 
@@ -254,75 +267,70 @@ const Settings = () => {
               <p className="panel-subtitle">
                 Protect this register when the counter is unattended.
               </p>
-              <div className="field-grid">
-                <label className="field-label" htmlFor="current-pin">
-                  <span>Current PIN</span>
-                  <AppInput
-                    aria-label="Current PIN"
-                    id="current-pin"
-                    inputMode="numeric"
-                    maxLength={4}
-                    onChange={(event) => {
-                      setCurrentPin(event.target.value);
-                      setPinMessage('');
-                    }}
-                    type="password"
-                    value={currentPin}
-                  />
-                </label>
-                <label className="field-label" htmlFor="new-pin">
-                  <span>New PIN</span>
-                  <AppInput
-                    aria-label="New PIN"
-                    id="new-pin"
-                    inputMode="numeric"
-                    maxLength={4}
-                    onChange={(event) => {
-                      setNextPin(event.target.value);
-                      setPinMessage('');
-                    }}
-                    type="password"
-                    value={nextPin}
-                  />
-                </label>
-                <label className="field-label" htmlFor="confirm-pin">
-                  <span>Confirm new PIN</span>
-                  <AppInput
-                    aria-label="Confirm new PIN"
-                    id="confirm-pin"
-                    inputMode="numeric"
-                    maxLength={4}
-                    onChange={(event) => {
-                      setConfirmPin(event.target.value);
-                      setPinMessage('');
-                    }}
-                    type="password"
-                    value={confirmPin}
-                  />
-                </label>
-              </div>
-              {pinMessage && <p className="pin-message">{pinMessage}</p>}
-              {pin === DEFAULT_PIN && (
-                <p className="pin-hint pin-hint--inline">
-                  Demo PIN: {DEFAULT_PIN}
-                </p>
-              )}
-              <div className="pin-settings__actions">
-                <button
-                  className="secondary-button"
-                  onClick={lock}
-                  type="button"
-                >
-                  Lock now
-                </button>
-                <button
-                  className="primary-button"
-                  onClick={handlePinSave}
-                  type="button"
-                >
-                  Update PIN
-                </button>
-              </div>
+              <form noValidate onSubmit={handleSubmit(handlePinSave)}>
+                <div className="field-grid">
+                  <Field label="Current PIN" error={errors.currentPin?.message}>
+                    <AppInput
+                      aria-label="Current PIN"
+                      id="current-pin"
+                      inputMode="numeric"
+                      isInvalid={Boolean(errors.currentPin)}
+                      maxLength={4}
+                      type="password"
+                      {...register('currentPin', {
+                        onChange: () => setPinMessage(''),
+                      })}
+                    />
+                  </Field>
+                  <Field label="New PIN" error={errors.nextPin?.message}>
+                    <AppInput
+                      aria-label="New PIN"
+                      id="new-pin"
+                      inputMode="numeric"
+                      isInvalid={Boolean(errors.nextPin)}
+                      maxLength={4}
+                      type="password"
+                      {...register('nextPin', {
+                        onChange: () => setPinMessage(''),
+                      })}
+                    />
+                  </Field>
+                  <Field
+                    label="Confirm new PIN"
+                    error={errors.confirmPin?.message}
+                  >
+                    <AppInput
+                      aria-label="Confirm new PIN"
+                      id="confirm-pin"
+                      inputMode="numeric"
+                      isInvalid={Boolean(errors.confirmPin)}
+                      maxLength={4}
+                      type="password"
+                      {...register('confirmPin', {
+                        onChange: () => setPinMessage(''),
+                      })}
+                    />
+                  </Field>
+                </div>
+                {pinMessage && <p className="pin-message">{pinMessage}</p>}
+                {pin === DEFAULT_PIN && (
+                  <p className="pin-hint pin-hint--inline">
+                    Demo PIN: {DEFAULT_PIN}
+                  </p>
+                )}
+                <div className="pin-settings__actions">
+                  <button
+                    className="secondary-button"
+                    onClick={lock}
+                    type="button"
+                  >
+                    Lock now
+                  </button>
+                  <button className="primary-button" type="submit">
+                    Update PIN
+                  </button>
+                </div>
+              </form>
             </section>
           )}
 

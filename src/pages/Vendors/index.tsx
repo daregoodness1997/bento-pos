@@ -1,13 +1,15 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
 
 import { DashboardLayout } from 'layouts';
 import {
-  AppDatePicker,
   AppInput,
-  AppSelect,
   EmptyState,
   Field,
   FormActions,
+  FormDatePicker,
+  FormSelect,
   PageHeader,
   Panel,
   RecordTable,
@@ -15,7 +17,17 @@ import {
   StatTile,
 } from 'components';
 import type { TableColumn } from 'components';
-import { useStore } from 'context';
+import { useConfirm, useStore } from 'context';
+import {
+  deliverySchema,
+  vendorPaymentSchema,
+  vendorSchema,
+} from 'schemas/forms';
+import type {
+  DeliveryValues,
+  VendorPaymentValues,
+  VendorValues,
+} from 'schemas/forms';
 import { dateKey } from 'store/seed';
 import type { Delivery, PayMethod, Vendor, VendorPayment } from 'types/store';
 import {
@@ -33,45 +45,18 @@ import type {
 } from 'utils/finance';
 import { formatNaira } from 'utils/format';
 
-interface VendorFormState {
-  name: string;
-  phone: string;
-  supplies: string;
-  termsDays: string;
-}
-
-interface DeliveryFormState {
-  vendorId: string;
-  date: string;
-  item: string;
-  inventoryItemId: string;
-  quantity: string;
-  cost: string;
-  amountPaid: string;
-  payByDate: string;
-  invoice: string;
-}
-
-interface PaymentFormState {
-  vendorId: string;
-  date: string;
-  amount: string;
-  method: PayMethod;
-  reference: string;
-}
-
 type DueTone = '' | 'bad' | 'warn' | 'good';
 
 const PAY_METHODS: PayMethod[] = ['Cash', 'Transfer', 'POS'];
 
-const createVendorForm = (): VendorFormState => ({
+const createVendorForm = (): VendorValues => ({
   name: '',
   phone: '',
   supplies: '',
   termsDays: '',
 });
 
-const createDeliveryForm = (vendorId: string): DeliveryFormState => ({
+const createDeliveryForm = (vendorId: string): DeliveryValues => ({
   vendorId,
   date: dateKey(),
   item: '',
@@ -83,7 +68,7 @@ const createDeliveryForm = (vendorId: string): DeliveryFormState => ({
   invoice: '',
 });
 
-const createPaymentForm = (vendorId: string): PaymentFormState => ({
+const createPaymentForm = (vendorId: string): VendorPaymentValues => ({
   vendorId,
   date: dateKey(),
   amount: '',
@@ -124,24 +109,34 @@ const Vendors = () => {
     updateVendorPayment,
     deleteVendorPayment,
   } = useStore();
+  const confirmAction = useConfirm();
 
   const canView = can('viewVendors');
   const canManage = can('manageVendors');
 
+  const vendorForm = useForm<VendorValues>({
+    defaultValues: createVendorForm(),
+    resolver: zodResolver(vendorSchema),
+  });
+  const deliveryForm = useForm<DeliveryValues>({
+    defaultValues: createDeliveryForm(''),
+    resolver: zodResolver(deliverySchema),
+  });
+  const paymentForm = useForm<VendorPaymentValues>({
+    defaultValues: createPaymentForm(''),
+    resolver: zodResolver(vendorPaymentSchema),
+  });
+
+  const { errors: vendorErrors } = vendorForm.formState;
+  const { errors: deliveryErrors } = deliveryForm.formState;
+  const { errors: paymentErrors } = paymentForm.formState;
+
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
-  const [vendorForm, setVendorForm] =
-    useState<VendorFormState>(createVendorForm);
   const [vendorFormOpen, setVendorFormOpen] = useState(false);
   const [editingVendorId, setEditingVendorId] = useState<string | null>(null);
-  const [deliveryForm, setDeliveryForm] = useState<DeliveryFormState>(() =>
-    createDeliveryForm(''),
-  );
   const [deliveryFormOpen, setDeliveryFormOpen] = useState(false);
   const [editingDeliveryId, setEditingDeliveryId] = useState<string | null>(
     null,
-  );
-  const [paymentForm, setPaymentForm] = useState<PaymentFormState>(() =>
-    createPaymentForm(''),
   );
   const [paymentFormOpen, setPaymentFormOpen] = useState(false);
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
@@ -260,19 +255,19 @@ const Vendors = () => {
   const unpaidRows = activeVendor?.rows.filter((row) => row.balance > 0) ?? [];
 
   const resetVendorForm = () => {
-    setVendorForm(createVendorForm());
+    vendorForm.reset(createVendorForm());
     setEditingVendorId(null);
     setVendorFormOpen(false);
   };
 
   const openVendorForm = () => {
-    setVendorForm(createVendorForm());
+    vendorForm.reset(createVendorForm());
     setEditingVendorId(null);
     setVendorFormOpen(true);
   };
 
   const openVendorEdit = (vendor: Vendor) => {
-    setVendorForm({
+    vendorForm.reset({
       name: vendor.name,
       phone: vendor.phone,
       supplies: vendor.supplies,
@@ -283,7 +278,7 @@ const Vendors = () => {
   };
 
   const resetDeliveryForm = () => {
-    setDeliveryForm(createDeliveryForm(activeVendorId ?? ''));
+    deliveryForm.reset(createDeliveryForm(activeVendorId ?? ''));
     setEditingDeliveryId(null);
     setDeliveryFormOpen(false);
   };
@@ -292,13 +287,13 @@ const Vendors = () => {
     if (!activeVendorId) {
       return;
     }
-    setDeliveryForm(createDeliveryForm(activeVendorId));
+    deliveryForm.reset(createDeliveryForm(activeVendorId));
     setEditingDeliveryId(null);
     setDeliveryFormOpen(true);
   };
 
   const editDelivery = (delivery: Delivery) => {
-    setDeliveryForm({
+    deliveryForm.reset({
       vendorId: delivery.vendorId,
       date: delivery.date,
       item: delivery.item,
@@ -314,7 +309,7 @@ const Vendors = () => {
   };
 
   const resetPaymentForm = () => {
-    setPaymentForm(createPaymentForm(activeVendorId ?? ''));
+    paymentForm.reset(createPaymentForm(activeVendorId ?? ''));
     setEditingPaymentId(null);
     setPaymentFormOpen(false);
   };
@@ -323,13 +318,13 @@ const Vendors = () => {
     if (!activeVendorId) {
       return;
     }
-    setPaymentForm(createPaymentForm(activeVendorId));
+    paymentForm.reset(createPaymentForm(activeVendorId));
     setEditingPaymentId(null);
     setPaymentFormOpen(true);
   };
 
   const editPayment = (payment: VendorPayment) => {
-    setPaymentForm({
+    paymentForm.reset({
       vendorId: payment.vendorId,
       date: payment.date,
       amount: String(payment.amount),
@@ -353,28 +348,16 @@ const Vendors = () => {
     setEditingPaymentId(null);
   };
 
-  const handleVendorSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleVendorSubmit = (values: VendorValues) => {
     if (!canManage) {
       return;
     }
 
-    const name = vendorForm.name.trim();
-    const phone = vendorForm.phone.trim();
-    const supplies = vendorForm.supplies.trim();
-    const termsValue = vendorForm.termsDays.trim();
+    const name = values.name.trim();
+    const phone = values.phone.trim();
+    const supplies = values.supplies.trim();
+    const termsValue = values.termsDays.trim();
     const termsDays = termsValue === '' ? undefined : Number(termsValue);
-
-    if (!name || !phone) {
-      return;
-    }
-
-    if (
-      termsDays !== undefined &&
-      (!Number.isInteger(termsDays) || termsDays < 0)
-    ) {
-      return;
-    }
 
     if (editingVendorId) {
       updateVendor(editingVendorId, { phone, supplies, termsDays });
@@ -385,45 +368,29 @@ const Vendors = () => {
     resetVendorForm();
   };
 
-  const handleDeliverySubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleDeliverySubmit = (values: DeliveryValues) => {
     if (!canManage) {
       return;
     }
 
-    const { vendorId } = deliveryForm;
-    const item = deliveryForm.item.trim();
-    const quantity = Number(deliveryForm.quantity);
-    const cost = Number(deliveryForm.cost);
-    const paidValue =
-      deliveryForm.amountPaid.trim() === '' ? '0' : deliveryForm.amountPaid;
+    const { vendorId, date, inventoryItemId, payByDate } = values;
+    const item = values.item.trim();
+    const quantity = Number(values.quantity);
+    const cost = Number(values.cost);
+    const paidValue = values.amountPaid.trim() === '' ? '0' : values.amountPaid;
     const amountPaid = Number(paidValue);
-
-    if (
-      !vendorId ||
-      !deliveryForm.date ||
-      !item ||
-      !Number.isFinite(quantity) ||
-      quantity <= 0 ||
-      !Number.isFinite(cost) ||
-      cost <= 0 ||
-      !Number.isFinite(amountPaid) ||
-      amountPaid < 0
-    ) {
-      return;
-    }
 
     const total = roundMoney(quantity * cost);
     const payload = {
       vendorId,
-      date: deliveryForm.date,
+      date,
       item,
-      inventoryItemId: deliveryForm.inventoryItemId || undefined,
+      inventoryItemId: inventoryItemId || undefined,
       quantity,
       cost: roundMoney(cost),
       amountPaid: roundMoney(Math.min(amountPaid, total)),
-      payByDate: deliveryForm.payByDate || undefined,
-      invoice: deliveryForm.invoice.trim(),
+      payByDate: payByDate || undefined,
+      invoice: values.invoice.trim(),
     };
 
     if (editingDeliveryId) {
@@ -435,30 +402,20 @@ const Vendors = () => {
     resetDeliveryForm();
   };
 
-  const handlePaymentSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handlePaymentSubmit = (values: VendorPaymentValues) => {
     if (!canManage) {
       return;
     }
 
-    const { vendorId } = paymentForm;
-    const rawAmount = Number(paymentForm.amount);
-
-    if (
-      !vendorId ||
-      !paymentForm.date ||
-      !Number.isFinite(rawAmount) ||
-      rawAmount <= 0
-    ) {
-      return;
-    }
+    const { vendorId, date, method } = values;
+    const rawAmount = Number(values.amount);
 
     const payload = {
       vendorId,
-      date: paymentForm.date,
+      date,
       amount: roundMoney(rawAmount),
-      method: paymentForm.method,
-      reference: paymentForm.reference.trim(),
+      method,
+      reference: values.reference.trim(),
     };
 
     if (editingPaymentId) {
@@ -470,8 +427,11 @@ const Vendors = () => {
     resetPaymentForm();
   };
 
-  const handleDeleteVendor = (vendor: Vendor) => {
-    if (!canManage || !window.confirm(`Delete vendor ${vendor.name}?`)) {
+  const handleDeleteVendor = async (vendor: Vendor) => {
+    if (!canManage) {
+      return;
+    }
+    if (!(await confirmAction(`Delete vendor ${vendor.name}?`))) {
       return;
     }
 
@@ -484,9 +444,12 @@ const Vendors = () => {
     }
   };
 
-  const handleDeleteDelivery = (delivery: Delivery) => {
+  const handleDeleteDelivery = async (delivery: Delivery) => {
     const label = delivery.invoice || delivery.item;
-    if (!canManage || !window.confirm(`Delete delivery ${label}?`)) {
+    if (!canManage) {
+      return;
+    }
+    if (!(await confirmAction(`Delete delivery ${label}?`))) {
       return;
     }
 
@@ -496,9 +459,12 @@ const Vendors = () => {
     }
   };
 
-  const handleDeletePayment = (payment: VendorPayment) => {
+  const handleDeletePayment = async (payment: VendorPayment) => {
     const label = payment.reference || payment.method;
-    if (!canManage || !window.confirm(`Delete payment ${label}?`)) {
+    if (!canManage) {
+      return;
+    }
+    if (!(await confirmAction(`Delete payment ${label}?`))) {
       return;
     }
 
@@ -710,9 +676,13 @@ const Vendors = () => {
             : 'Vendor names are permanent once saved.'
         }
       >
-        <form className="admin-form" onSubmit={handleVendorSubmit}>
+        <form
+          className="admin-form"
+          onSubmit={vendorForm.handleSubmit(handleVendorSubmit)}
+        >
           <div className="field-grid">
             <Field
+              error={vendorErrors.name?.message}
               label="Vendor name"
               hint={
                 editingVendorId
@@ -723,57 +693,33 @@ const Vendors = () => {
               <AppInput
                 aria-label="Vendor name"
                 isDisabled={Boolean(editingVendorId)}
-                onChange={(event) =>
-                  setVendorForm((current) => ({
-                    ...current,
-                    name: event.target.value,
-                  }))
-                }
                 isRequired={!editingVendorId}
                 type="text"
-                value={vendorForm.name}
+                {...vendorForm.register('name')}
               />
             </Field>
-            <Field label="Phone">
+            <Field error={vendorErrors.phone?.message} label="Phone">
               <AppInput
                 aria-label="Vendor phone"
-                onChange={(event) =>
-                  setVendorForm((current) => ({
-                    ...current,
-                    phone: event.target.value,
-                  }))
-                }
                 isRequired
                 type="tel"
-                value={vendorForm.phone}
+                {...vendorForm.register('phone')}
               />
             </Field>
-            <Field label="Supplies">
+            <Field error={vendorErrors.supplies?.message} label="Supplies">
               <AppInput
                 aria-label="Vendor supplies"
-                onChange={(event) =>
-                  setVendorForm((current) => ({
-                    ...current,
-                    supplies: event.target.value,
-                  }))
-                }
                 type="text"
-                value={vendorForm.supplies}
+                {...vendorForm.register('supplies')}
               />
             </Field>
-            <Field label="Terms (days)">
+            <Field error={vendorErrors.termsDays?.message} label="Terms (days)">
               <AppInput
                 aria-label="Payment terms in days"
                 min="0"
-                onChange={(event) =>
-                  setVendorForm((current) => ({
-                    ...current,
-                    termsDays: event.target.value,
-                  }))
-                }
                 step="1"
                 type="number"
-                value={vendorForm.termsDays}
+                {...vendorForm.register('termsDays')}
               />
             </Field>
           </div>
@@ -981,136 +927,108 @@ const Vendors = () => {
                 <p className="panel-subtitle">
                   The unpaid balance clears against the oldest delivery first.
                 </p>
-                <form className="admin-form" onSubmit={handleDeliverySubmit}>
+                <form
+                  className="admin-form"
+                  onSubmit={deliveryForm.handleSubmit(handleDeliverySubmit)}
+                >
                   <div className="field-grid">
-                    <Field label="Vendor">
-                      <AppSelect
-                        aria-label="Delivery vendor"
+                    <Field
+                      error={deliveryErrors.vendorId?.message}
+                      label="Vendor"
+                    >
+                      <FormSelect
+                        control={deliveryForm.control}
                         isRequired
-                        onValueChange={(value) =>
-                          setDeliveryForm((current) => ({
-                            ...current,
-                            vendorId: value,
-                          }))
-                        }
+                        label="Delivery vendor"
+                        name="vendorId"
                         options={vendorOptions}
-                        value={deliveryForm.vendorId}
                       />
                     </Field>
-                    <Field label="Delivery date">
-                      <AppDatePicker
-                        aria-label="Delivery date"
+                    <Field
+                      error={deliveryErrors.date?.message}
+                      label="Delivery date"
+                    >
+                      <FormDatePicker
+                        control={deliveryForm.control}
                         isRequired
-                        onValueChange={(date) =>
-                          setDeliveryForm((current) => ({
-                            ...current,
-                            date,
-                          }))
-                        }
-                        value={deliveryForm.date}
+                        label="Delivery date"
+                        name="date"
                       />
                     </Field>
-                    <Field label="Item">
+                    <Field error={deliveryErrors.item?.message} label="Item">
                       <AppInput
                         aria-label="Delivery item"
                         isRequired
-                        onChange={(event) =>
-                          setDeliveryForm((current) => ({
-                            ...current,
-                            item: event.target.value,
-                          }))
-                        }
                         type="text"
-                        value={deliveryForm.item}
+                        {...deliveryForm.register('item')}
                       />
                     </Field>
                     <Field label="Linked inventory item">
-                      <AppSelect
-                        aria-label="Linked inventory item"
-                        onValueChange={(value) =>
-                          setDeliveryForm((current) => ({
-                            ...current,
-                            inventoryItemId: value,
-                          }))
-                        }
+                      <FormSelect
+                        control={deliveryForm.control}
+                        label="Linked inventory item"
+                        name="inventoryItemId"
                         options={[
                           { key: '', label: 'Not linked' },
                           ...inventoryOptions,
                         ]}
                         placeholder="Not linked"
-                        value={deliveryForm.inventoryItemId}
                       />
                     </Field>
-                    <Field label="Quantity">
+                    <Field
+                      error={deliveryErrors.quantity?.message}
+                      label="Quantity"
+                    >
                       <AppInput
                         aria-label="Delivery quantity"
                         isRequired
                         min="0.01"
-                        onChange={(event) =>
-                          setDeliveryForm((current) => ({
-                            ...current,
-                            quantity: event.target.value,
-                          }))
-                        }
                         step="any"
                         type="number"
-                        value={deliveryForm.quantity}
+                        {...deliveryForm.register('quantity')}
                       />
                     </Field>
-                    <Field label="Cost per unit">
+                    <Field
+                      error={deliveryErrors.cost?.message}
+                      label="Cost per unit"
+                    >
                       <AppInput
                         aria-label="Delivery cost per unit"
                         isRequired
                         min="0.01"
-                        onChange={(event) =>
-                          setDeliveryForm((current) => ({
-                            ...current,
-                            cost: event.target.value,
-                          }))
-                        }
                         step="0.01"
                         type="number"
-                        value={deliveryForm.cost}
+                        {...deliveryForm.register('cost')}
                       />
                     </Field>
-                    <Field label="Amount paid now" hint="Leave as 0 if unpaid.">
+                    <Field
+                      error={deliveryErrors.amountPaid?.message}
+                      label="Amount paid now"
+                      hint="Leave as 0 if unpaid."
+                    >
                       <AppInput
                         aria-label="Amount paid on delivery"
                         min="0"
-                        onChange={(event) =>
-                          setDeliveryForm((current) => ({
-                            ...current,
-                            amountPaid: event.target.value,
-                          }))
-                        }
                         step="0.01"
                         type="number"
-                        value={deliveryForm.amountPaid}
+                        {...deliveryForm.register('amountPaid')}
                       />
                     </Field>
-                    <Field label="Pay-by date">
-                      <AppDatePicker
-                        aria-label="Delivery pay-by date"
-                        onValueChange={(date) =>
-                          setDeliveryForm((current) => ({
-                            ...current,
-                            payByDate: date,
-                          }))
-                        }
-                        value={deliveryForm.payByDate}
+                    <Field
+                      error={deliveryErrors.payByDate?.message}
+                      label="Pay-by date"
+                    >
+                      <FormDatePicker
+                        control={deliveryForm.control}
+                        label="Delivery pay-by date"
+                        name="payByDate"
                       />
                     </Field>
                     <Field label="Invoice">
                       <AppInput
                         aria-label="Delivery invoice"
-                        onChange={(event) =>
-                          setDeliveryForm((current) => ({
-                            ...current,
-                            invoice: event.target.value,
-                          }))
-                        }
                         type="text"
-                        value={deliveryForm.invoice}
+                        {...deliveryForm.register('invoice')}
                       />
                     </Field>
                   </div>
@@ -1133,75 +1051,57 @@ const Vendors = () => {
                 <p className="panel-subtitle">
                   Payments clear the oldest unpaid deliveries first.
                 </p>
-                <form className="admin-form" onSubmit={handlePaymentSubmit}>
+                <form
+                  className="admin-form"
+                  onSubmit={paymentForm.handleSubmit(handlePaymentSubmit)}
+                >
                   <div className="field-grid">
-                    <Field label="Vendor">
-                      <AppSelect
-                        aria-label="Payment vendor"
+                    <Field
+                      error={paymentErrors.vendorId?.message}
+                      label="Vendor"
+                    >
+                      <FormSelect
+                        control={paymentForm.control}
                         isRequired
-                        onValueChange={(value) =>
-                          setPaymentForm((current) => ({
-                            ...current,
-                            vendorId: value,
-                          }))
-                        }
+                        label="Payment vendor"
+                        name="vendorId"
                         options={vendorOptions}
-                        value={paymentForm.vendorId}
                       />
                     </Field>
-                    <Field label="Payment date">
-                      <AppDatePicker
-                        aria-label="Payment date"
+                    <Field
+                      error={paymentErrors.date?.message}
+                      label="Payment date"
+                    >
+                      <FormDatePicker
+                        control={paymentForm.control}
                         isRequired
-                        onValueChange={(date) =>
-                          setPaymentForm((current) => ({
-                            ...current,
-                            date,
-                          }))
-                        }
-                        value={paymentForm.date}
+                        label="Payment date"
+                        name="date"
                       />
                     </Field>
-                    <Field label="Amount">
+                    <Field error={paymentErrors.amount?.message} label="Amount">
                       <AppInput
                         aria-label="Payment amount"
                         isRequired
                         min="0.01"
-                        onChange={(event) =>
-                          setPaymentForm((current) => ({
-                            ...current,
-                            amount: event.target.value,
-                          }))
-                        }
                         step="0.01"
                         type="number"
-                        value={paymentForm.amount}
+                        {...paymentForm.register('amount')}
                       />
                     </Field>
-                    <Field label="Method">
-                      <AppSelect
-                        aria-label="Payment method"
-                        onValueChange={(value) =>
-                          setPaymentForm((current) => ({
-                            ...current,
-                            method: value as PayMethod,
-                          }))
-                        }
+                    <Field error={paymentErrors.method?.message} label="Method">
+                      <FormSelect
+                        control={paymentForm.control}
+                        label="Payment method"
+                        name="method"
                         options={payMethodOptions}
-                        value={paymentForm.method}
                       />
                     </Field>
                     <Field label="Reference">
                       <AppInput
                         aria-label="Payment reference"
-                        onChange={(event) =>
-                          setPaymentForm((current) => ({
-                            ...current,
-                            reference: event.target.value,
-                          }))
-                        }
                         type="text"
-                        value={paymentForm.reference}
+                        {...paymentForm.register('reference')}
                       />
                     </Field>
                   </div>

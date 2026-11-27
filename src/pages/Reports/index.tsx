@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { FormEvent } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
 
 import { DashboardLayout } from 'layouts';
 import {
@@ -10,6 +11,7 @@ import {
   EmptyState,
   Field,
   FormActions,
+  FormDatePicker,
   PageHeader,
   Panel,
   RecordTable,
@@ -18,7 +20,9 @@ import {
   Tabs,
 } from 'components';
 import type { TabItem, TableColumn } from 'components';
-import { useStore } from 'context';
+import { useConfirm, useStore } from 'context';
+import { dayCloseSchema } from 'schemas/forms';
+import type { DayCloseValues } from 'schemas/forms';
 import { dateKey } from 'store/seed';
 import type { DayClose } from 'types/store';
 import { downloadCsv } from 'utils/exportCsv';
@@ -174,6 +178,7 @@ const Reports = () => {
     updateDayClose,
     deleteDayClose,
   } = useStore();
+  const confirmAction = useConfirm();
   const cashierId =
     currentUser?.role === 'Cashier' ? currentUser.id : undefined;
   const isCashier = cashierId !== undefined;
@@ -181,14 +186,41 @@ const Reports = () => {
   const today = dateKey();
 
   const [activeTab, setActiveTab] = useState('day');
-  const [date, setDate] = useState(today);
   const [month, setMonth] = useState(today.slice(0, 7));
-  const [countedCash, setCountedCash] = useState('');
-  const [note, setNote] = useState('');
   const [editingCloseId, setEditingCloseId] = useState<string | null>(null);
-  const [editCountedCash, setEditCountedCash] = useState('');
-  const [editNote, setEditNote] = useState('');
   const [copied, setCopied] = useState(false);
+
+  const addForm = useForm<DayCloseValues>({
+    resolver: zodResolver(dayCloseSchema),
+    defaultValues: { date: today, countedCash: '', note: '' },
+  });
+
+  const editForm = useForm<DayCloseValues>({
+    resolver: zodResolver(dayCloseSchema),
+    defaultValues: { date: today, countedCash: '', note: '' },
+  });
+
+  const {
+    control: addControl,
+    handleSubmit: handleAddSubmit,
+    register: registerAdd,
+    reset: resetAdd,
+    setValue: setAddValue,
+    watch: watchAdd,
+    formState: { errors: addErrors },
+  } = addForm;
+
+  const {
+    handleSubmit: handleEditSubmitForm,
+    register: registerEdit,
+    reset: resetEdit,
+    watch: watchEdit,
+    formState: { errors: editErrors },
+  } = editForm;
+
+  const date = watchAdd('date');
+  const countedCash = watchAdd('countedCash');
+  const editCountedCash = watchEdit('countedCash');
 
   const report = useMemo(
     () => dailyReport(data, date, cashierId),
@@ -300,9 +332,12 @@ const Reports = () => {
           <button
             className="text-button"
             onClick={() => {
+              editForm.reset({
+                date: row.date,
+                countedCash: String(row.countedCash),
+                note: row.note,
+              });
               setEditingCloseId(row.id);
-              setEditCountedCash(String(row.countedCash));
-              setEditNote(row.note);
             }}
             type="button"
           >
@@ -310,11 +345,11 @@ const Reports = () => {
           </button>
           <button
             className="text-button"
-            onClick={() => {
+            onClick={async () => {
               if (
-                !window.confirm(
+                !(await confirmAction(
                   'Delete this day close record? This cannot be undone.',
-                )
+                ))
               ) {
                 return;
               }
@@ -333,7 +368,7 @@ const Reports = () => {
   }
 
   const handleDateChange = (value: string) => {
-    setDate(value);
+    setAddValue('date', value);
     setEditingCloseId(null);
   };
 
@@ -344,35 +379,35 @@ const Reports = () => {
       .catch(() => setCopied(false));
   };
 
-  const handleAddClose = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!canClose || countedValue === null) {
+  const handleAddClose = (values: DayCloseValues) => {
+    if (!canClose) {
       return;
     }
 
+    const counted = Number(values.countedCash);
     addDayClose({
-      date,
+      date: values.date,
       expectedCash: report.expectedCash,
-      countedCash: countedValue,
-      difference: roundAmount(countedValue - report.expectedCash),
-      note: note.trim(),
+      countedCash: roundAmount(counted),
+      difference: roundAmount(counted - report.expectedCash),
+      note: values.note.trim(),
       staffId: cashierId,
     });
-    setCountedCash('');
-    setNote('');
+    resetAdd({ date: values.date, countedCash: '', note: '' });
   };
 
-  const handleSaveEdit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!editingClose || editCountedValue === null) {
+  const handleSaveEdit = (values: DayCloseValues) => {
+    if (!editingClose) {
       return;
     }
 
+    const counted = Number(values.countedCash);
     updateDayClose(editingClose.id, {
-      countedCash: editCountedValue,
-      difference: roundAmount(editCountedValue - editingClose.expectedCash),
-      note: editNote.trim(),
+      countedCash: roundAmount(counted),
+      difference: roundAmount(counted - editingClose.expectedCash),
+      note: values.note.trim(),
     });
+    resetEdit({ date: values.date, countedCash: '', note: '' });
     setEditingCloseId(null);
   };
 
@@ -634,28 +669,36 @@ const Reports = () => {
             title="Day close"
           >
             {canClose ? (
-              <form className="admin-form" onSubmit={handleAddClose}>
+              <form
+                className="admin-form"
+                onSubmit={handleAddSubmit(handleAddClose)}
+              >
                 <div className="field-grid">
-                  <Field hint="Must match the report date." label="Date">
-                    <AppDatePicker
-                      onValueChange={handleDateChange}
-                      value={date}
+                  <Field
+                    error={addErrors.date?.message}
+                    hint="Must match the report date."
+                    label="Date"
+                  >
+                    <FormDatePicker
+                      control={addControl}
+                      label="Date"
+                      name="date"
                     />
                   </Field>
-                  <Field label="Cash counted">
+                  <Field
+                    error={addErrors.countedCash?.message}
+                    label="Cash counted"
+                  >
                     <AppInput
+                      isRequired
                       min="0"
-                      onChange={(event) => setCountedCash(event.target.value)}
                       step="0.01"
                       type="number"
-                      value={countedCash}
+                      {...registerAdd('countedCash')}
                     />
                   </Field>
                   <Field label="Note">
-                    <AppTextarea
-                      onChange={(event) => setNote(event.target.value)}
-                      value={note}
-                    />
+                    <AppTextarea {...registerAdd('note')} />
                   </Field>
                 </div>
 
@@ -675,10 +718,9 @@ const Reports = () => {
                 </div>
 
                 <FormActions
-                  onSecondary={() => {
-                    setCountedCash('');
-                    setNote('');
-                  }}
+                  onSecondary={() =>
+                    resetAdd({ date, countedCash: '', note: '' })
+                  }
                   secondaryLabel="Clear"
                   submitLabel="Save day close"
                 />
@@ -698,24 +740,25 @@ const Reports = () => {
             />
 
             {canClose && editingClose && (
-              <form className="admin-form form-card" onSubmit={handleSaveEdit}>
+              <form
+                className="admin-form form-card"
+                onSubmit={handleEditSubmitForm(handleSaveEdit)}
+              >
                 <div className="field-grid">
-                  <Field label="Cash counted">
+                  <Field
+                    error={editErrors.countedCash?.message}
+                    label="Cash counted"
+                  >
                     <AppInput
+                      isRequired
                       min="0"
-                      onChange={(event) =>
-                        setEditCountedCash(event.target.value)
-                      }
                       step="0.01"
                       type="number"
-                      value={editCountedCash}
+                      {...registerEdit('countedCash')}
                     />
                   </Field>
                   <Field label="Note">
-                    <AppTextarea
-                      onChange={(event) => setEditNote(event.target.value)}
-                      value={editNote}
-                    />
+                    <AppTextarea {...registerEdit('note')} />
                   </Field>
                 </div>
 

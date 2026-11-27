@@ -1,23 +1,32 @@
 import { memo, useState } from 'react';
-import type { FormEvent } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 
-import { AppInput, EyeFilledIcon, EyeSlashFilledIcon } from 'components';
+import { AppInput, EyeFilledIcon, EyeSlashFilledIcon, Field } from 'components';
 import { DEMO_EMAIL, DEMO_PASSWORD, useAuth } from 'context';
+import { loginSchema } from 'schemas/forms';
+import type { LoginValues } from 'schemas/forms';
 import { formatNaira } from 'utils/format';
 
 const Auth = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [isVisible, setIsVisible] = useState(false);
   const [error, setError] = useState('');
+  const {
+    formState: { errors },
+    handleSubmit,
+    register,
+  } = useForm<LoginValues>({
+    defaultValues: { email: '', password: '' },
+    resolver: zodResolver(loginSchema),
+  });
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleFormSubmit = (values: LoginValues) => {
+    setError('');
 
-    if (!login(email, password)) {
+    if (!login(values.email, values.password)) {
       setError('Those details do not match this register.');
       return;
     }
@@ -74,13 +83,16 @@ const Auth = () => {
       </aside>
 
       <section className="auth-panel">
-        <form className="auth-form" onSubmit={handleSubmit}>
+        <form
+          className="auth-form"
+          noValidate
+          onSubmit={handleSubmit(handleFormSubmit)}
+        >
           <h2>Start your shift</h2>
           <p className="auth-form__subtitle">Sign in to open register 02.</p>
 
           <div className="auth-field">
-            <label htmlFor="email">
-              <span>Email</span>
+            <Field label="Email" error={errors.email?.message}>
               <div className="auth-input-wrap">
                 <AppInput
                   aria-label="Email"
@@ -90,22 +102,17 @@ const Auth = () => {
                       'h-[46px] min-h-[46px] border-[#2c3b3d] bg-[#11191b] data-[hover=true]:border-[#ffb020]',
                   }}
                   id="email"
-                  isRequired
-                  onChange={(event) => {
-                    setEmail(event.target.value);
-                    setError('');
-                  }}
+                  isInvalid={Boolean(errors.email)}
                   placeholder="you@bento.pos"
                   type="email"
-                  value={email}
+                  {...register('email', { onChange: () => setError('') })}
                 />
               </div>
-            </label>
+            </Field>
           </div>
 
           <div className="auth-field">
-            <label htmlFor="password">
-              <span>Password</span>
+            <Field label="Password" error={errors.password?.message}>
               <div className="auth-input-wrap">
                 <AppInput
                   aria-label="Password"
@@ -116,14 +123,10 @@ const Auth = () => {
                       'h-[46px] min-h-[46px] border-[#2c3b3d] bg-[#11191b] data-[hover=true]:border-[#ffb020]',
                   }}
                   id="password"
-                  isRequired
-                  onChange={(event) => {
-                    setPassword(event.target.value);
-                    setError('');
-                  }}
+                  isInvalid={Boolean(errors.password)}
                   placeholder="Enter your password"
                   type={isVisible ? 'text' : 'password'}
-                  value={password}
+                  {...register('password', { onChange: () => setError('') })}
                 />
                 <button
                   aria-label={isVisible ? 'Hide password' : 'Show password'}
@@ -134,7 +137,7 @@ const Auth = () => {
                   {isVisible ? <EyeSlashFilledIcon /> : <EyeFilledIcon />}
                 </button>
               </div>
-            </label>
+            </Field>
           </div>
 
           {error && (

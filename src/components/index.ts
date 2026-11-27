@@ -7,6 +7,7 @@ import IdleLock from './IdleLock';
 import PrintActions from './PrintActions';
 import ThermalPrinterPanel from './ThermalPrinterPanel';
 
+export * from './form';
 export * from './icons';
 export * from './ui';
 

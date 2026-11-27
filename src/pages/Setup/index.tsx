@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useFieldArray, useForm } from 'react-hook-form';
 
 import { DashboardLayout } from 'layouts';
 import {
@@ -7,13 +9,26 @@ import {
   EmptyState,
   Field,
   FormActions,
+  FormSelect,
   PageHeader,
   Panel,
   RecordTable,
   StatTile,
 } from 'components';
 import type { TableColumn } from 'components';
-import { useStore } from 'context';
+import { useConfirm, useStore } from 'context';
+import {
+  inventoryItemSchema,
+  menuItemSchema,
+  openingBalancesSchema,
+  userSchema,
+} from 'schemas/forms';
+import type {
+  InventoryItemValues,
+  MenuItemValues,
+  OpeningBalancesValues,
+  UserValues,
+} from 'schemas/forms';
 import {
   DEFAULT_INVENTORY,
   DEFAULT_MENU,
@@ -81,46 +96,6 @@ const ROLE_ACCESS: Record<Role, { access: AccessLevel; hint: string }> = {
   },
 };
 
-type BalanceForm = {
-  storeName: string;
-  openingCash: string;
-  openingBank: string;
-  openingCustomerDebts: string;
-  openingVendorDebts: string;
-};
-
-type InventoryDraft = {
-  name: string;
-  category: Department;
-  unit: string;
-  openingStock: string;
-  cost: string;
-  reorderLevel: string;
-  targetLevel: string;
-};
-
-type RecipeDraftLine = {
-  itemId: string;
-  quantity: string;
-};
-
-type MenuDraft = {
-  name: string;
-  department: Department;
-  price: string;
-  prepTime: string;
-  badge: string;
-  tone: MenuTone;
-  recipe: RecipeDraftLine[];
-};
-
-type UserDraft = {
-  name: string;
-  email: string;
-  role: Role;
-  pin: string;
-};
-
 type ChecklistItem = {
   id: string;
   label: string;
@@ -134,7 +109,9 @@ const toAmount = (value: string) => {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 };
 
-const balanceFormFromSettings = (settings: AppSettings): BalanceForm => ({
+const balanceFormFromSettings = (
+  settings: AppSettings,
+): OpeningBalancesValues => ({
   storeName: settings.storeName,
   openingCash: String(settings.openingCash),
   openingBank: String(settings.openingBank),
@@ -142,7 +119,7 @@ const balanceFormFromSettings = (settings: AppSettings): BalanceForm => ({
   openingVendorDebts: String(settings.openingVendorDebts),
 });
 
-const emptyInventoryDraft = (): InventoryDraft => ({
+const emptyInventoryDraft = (): InventoryItemValues => ({
   name: '',
   category: 'Restaurant',
   unit: '',
@@ -152,19 +129,19 @@ const emptyInventoryDraft = (): InventoryDraft => ({
   targetLevel: '',
 });
 
-const emptyMenuDraft = (): MenuDraft => ({
+const emptyMenuDraft = (): MenuItemValues => ({
   name: '',
-  department: 'Restaurant',
+  category: 'Restaurant',
   price: '',
   prepTime: '',
   badge: '',
-  tone: 'signal',
   recipe: [{ itemId: '', quantity: '' }],
 });
 
-const emptyUserDraft = (): UserDraft => ({
+const emptyUserDraft = (): UserValues => ({
   name: '',
   email: '',
+  password: DEFAULT_PASSWORD,
   role: 'Cashier',
   pin: '',
 });
@@ -187,28 +164,48 @@ const Setup = ({ embedded = false }: Props) => {
     resetData,
     logAudit,
   } = useStore();
+  const confirmAction = useConfirm();
 
   const [activeTab, setActiveTab] = useState<TabId>('overview');
-  const [balanceForm, setBalanceForm] = useState<BalanceForm>(() =>
-    balanceFormFromSettings(data.settings),
-  );
-  const [inventoryDraft, setInventoryDraft] =
-    useState<InventoryDraft>(emptyInventoryDraft);
   const [editingInventoryId, setEditingInventoryId] = useState<string | null>(
     null,
   );
-  const [menuDraft, setMenuDraft] = useState<MenuDraft>(emptyMenuDraft);
   const [editingMenuId, setEditingMenuId] = useState<string | null>(null);
-  const [userDraft, setUserDraft] = useState<UserDraft>(emptyUserDraft);
+  const [menuTone, setMenuTone] = useState<MenuTone>('signal');
   const [userMessage, setUserMessage] = useState('');
+
+  const balanceForm = useForm<OpeningBalancesValues>({
+    resolver: zodResolver(openingBalancesSchema),
+    defaultValues: balanceFormFromSettings(data.settings),
+  });
+  const inventoryForm = useForm<InventoryItemValues>({
+    resolver: zodResolver(inventoryItemSchema),
+    defaultValues: emptyInventoryDraft(),
+  });
+  const menuForm = useForm<MenuItemValues>({
+    resolver: zodResolver(menuItemSchema),
+    defaultValues: emptyMenuDraft(),
+  });
+  const userForm = useForm<UserValues>({
+    resolver: zodResolver(userSchema),
+    defaultValues: emptyUserDraft(),
+  });
+  const {
+    fields: recipeFields,
+    append,
+    remove,
+  } = useFieldArray({
+    control: menuForm.control,
+    name: 'recipe',
+  });
 
   const canManageSettings = can('manageSettings');
   const canManageInventory = can('manageInventory');
   const canManageRoles = can('manageRoles');
 
   useEffect(() => {
-    setBalanceForm(balanceFormFromSettings(data.settings));
-  }, [data.settings]);
+    balanceForm.reset(balanceFormFromSettings(data.settings));
+  }, [balanceForm, data.settings]);
 
   const checklist = useMemo<ChecklistItem[]>(() => {
     const storeName = data.settings.storeName.trim();
@@ -289,48 +286,22 @@ const Setup = ({ embedded = false }: Props) => {
     [data.inventory],
   );
 
-  const setBalanceField = (field: keyof BalanceForm, value: string) => {
-    setBalanceForm((current) => ({ ...current, [field]: value }));
-  };
-
-  const setInventoryField = (
-    field: Exclude<keyof InventoryDraft, 'category'>,
-    value: string,
-  ) => {
-    setInventoryDraft((current) => ({ ...current, [field]: value }));
-  };
-
-  const setMenuField = (
-    field: Exclude<keyof MenuDraft, 'department' | 'tone' | 'recipe'>,
-    value: string,
-  ) => {
-    setMenuDraft((current) => ({ ...current, [field]: value }));
-  };
-
-  const setUserField = (
-    field: Exclude<keyof UserDraft, 'role'>,
-    value: string,
-  ) => {
-    setUserDraft((current) => ({ ...current, [field]: value }));
-  };
-
-  const handleBalanceSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleBalanceSubmit = (values: OpeningBalancesValues) => {
     if (!canManageSettings) {
       return;
     }
     updateSettings({
-      storeName: balanceForm.storeName.trim(),
-      openingCash: toAmount(balanceForm.openingCash),
-      openingBank: toAmount(balanceForm.openingBank),
-      openingCustomerDebts: toAmount(balanceForm.openingCustomerDebts),
-      openingVendorDebts: toAmount(balanceForm.openingVendorDebts),
+      storeName: values.storeName.trim(),
+      openingCash: toAmount(values.openingCash),
+      openingBank: toAmount(values.openingBank),
+      openingCustomerDebts: toAmount(values.openingCustomerDebts),
+      openingVendorDebts: toAmount(values.openingVendorDebts),
     });
   };
 
   const resetInventoryDraft = () => {
     setEditingInventoryId(null);
-    setInventoryDraft(emptyInventoryDraft());
+    inventoryForm.reset(emptyInventoryDraft());
   };
 
   const startInventoryEdit = (item: InventoryItem) => {
@@ -338,7 +309,7 @@ const Setup = ({ embedded = false }: Props) => {
       return;
     }
     setEditingInventoryId(item.id);
-    setInventoryDraft({
+    inventoryForm.reset({
       name: item.name,
       category: item.category,
       unit: item.unit,
@@ -349,23 +320,19 @@ const Setup = ({ embedded = false }: Props) => {
     });
   };
 
-  const handleInventorySubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleInventorySubmit = (values: InventoryItemValues) => {
     if (!canManageInventory) {
       return;
     }
     const input = {
-      name: inventoryDraft.name.trim(),
-      category: inventoryDraft.category,
-      unit: inventoryDraft.unit.trim() || 'units',
-      openingStock: toAmount(inventoryDraft.openingStock),
-      cost: toAmount(inventoryDraft.cost),
-      reorderLevel: toAmount(inventoryDraft.reorderLevel),
-      targetLevel: toAmount(inventoryDraft.targetLevel),
+      name: values.name.trim(),
+      category: values.category,
+      unit: values.unit.trim() || 'units',
+      openingStock: toAmount(values.openingStock),
+      cost: toAmount(values.cost),
+      reorderLevel: toAmount(values.reorderLevel),
+      targetLevel: toAmount(values.targetLevel),
     };
-    if (!input.name) {
-      return;
-    }
     if (editingInventoryId) {
       updateInventoryItem(editingInventoryId, input);
     } else {
@@ -376,7 +343,8 @@ const Setup = ({ embedded = false }: Props) => {
 
   const resetMenuDraft = () => {
     setEditingMenuId(null);
-    setMenuDraft(emptyMenuDraft());
+    setMenuTone('signal');
+    menuForm.reset(emptyMenuDraft());
   };
 
   const startMenuEdit = (item: MenuItem) => {
@@ -384,13 +352,13 @@ const Setup = ({ embedded = false }: Props) => {
       return;
     }
     setEditingMenuId(item.id);
-    setMenuDraft({
+    setMenuTone(item.tone);
+    menuForm.reset({
       name: item.name,
-      department: item.category,
+      category: item.category,
       price: String(item.price),
       prepTime: String(item.prepTime),
       badge: item.badge ?? '',
-      tone: item.tone,
       recipe: item.recipe.slice(0, 3).map((line) => ({
         itemId: line.itemId,
         quantity: String(line.quantity),
@@ -398,57 +366,36 @@ const Setup = ({ embedded = false }: Props) => {
     });
   };
 
-  const setRecipeLine = (index: number, patch: Partial<RecipeDraftLine>) => {
-    setMenuDraft((current) => ({
-      ...current,
-      recipe: current.recipe.map((line, lineIndex) =>
-        lineIndex === index ? { ...line, ...patch } : line,
-      ),
-    }));
-  };
-
   const addRecipeLine = () => {
-    setMenuDraft((current) =>
-      current.recipe.length >= 3
-        ? current
-        : {
-            ...current,
-            recipe: [...current.recipe, { itemId: '', quantity: '' }],
-          },
-    );
+    if (recipeFields.length < 3) {
+      append({ itemId: '', quantity: '' });
+    }
   };
 
   const removeRecipeLine = (index: number) => {
-    setMenuDraft((current) => ({
-      ...current,
-      recipe: current.recipe.filter((_, lineIndex) => lineIndex !== index),
-    }));
+    remove(index);
   };
 
-  const handleMenuSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleMenuSubmit = (values: MenuItemValues) => {
     if (!canManageInventory) {
       return;
     }
-    const recipe: RecipeLine[] = menuDraft.recipe
-      .filter((line) => line.itemId && toAmount(line.quantity) > 0)
+    const recipe: RecipeLine[] = values.recipe
+      .filter((line) => line.itemId.trim() && Number(line.quantity) > 0)
       .slice(0, 3)
       .map((line) => ({
         itemId: line.itemId,
         quantity: toAmount(line.quantity),
       }));
     const input = {
-      name: menuDraft.name.trim(),
-      category: menuDraft.department,
-      price: toAmount(menuDraft.price),
-      prepTime: toAmount(menuDraft.prepTime),
-      badge: menuDraft.badge.trim() || undefined,
-      tone: menuDraft.tone,
+      name: values.name.trim(),
+      category: values.category,
+      price: toAmount(values.price),
+      prepTime: toAmount(values.prepTime),
+      badge: values.badge.trim() || undefined,
+      tone: menuTone,
       recipe,
     };
-    if (!input.name) {
-      return;
-    }
     if (editingMenuId) {
       updateMenuItem(editingMenuId, input);
     } else {
@@ -497,48 +444,86 @@ const Setup = ({ embedded = false }: Props) => {
     });
   };
 
-  const handleRoleChange = (id: string, role: Role) => {
+  const handleRoleChange = async (id: string, role: Role) => {
     if (!canManageRoles) {
+      return;
+    }
+    const name = data.users.find((user) => user.id === id)?.name ?? 'teammate';
+    if (
+      !(await confirmAction(`Change ${name}'s role to ${role}?`, {
+        title: 'Change role?',
+        confirmLabel: 'Change role',
+        tone: 'primary',
+      }))
+    ) {
       return;
     }
     updateUser(id, { role });
   };
 
-  const handleDeleteUser = (id: string) => {
+  const handleDeleteUser = async (id: string) => {
     if (!canManageRoles || currentUser?.id === id) {
+      return;
+    }
+    const name = data.users.find((user) => user.id === id)?.name ?? 'teammate';
+    if (
+      !(await confirmAction(`Remove ${name} from this register?`, {
+        title: 'Remove teammate?',
+        confirmLabel: 'Remove',
+      }))
+    ) {
       return;
     }
     deleteUser(id);
   };
 
-  const handleUserSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleDeleteInventory = async (id: string, name: string) => {
+    if (
+      !(await confirmAction(`Delete inventory item ${name}?`, {
+        title: 'Delete inventory item?',
+        confirmLabel: 'Delete',
+      }))
+    ) {
+      return;
+    }
+    deleteInventoryItem(id);
+  };
+
+  const handleDeleteMenu = async (id: string, name: string) => {
+    if (
+      !(await confirmAction(`Delete menu item ${name}?`, {
+        title: 'Delete menu item?',
+        confirmLabel: 'Delete',
+      }))
+    ) {
+      return;
+    }
+    deleteMenuItem(id);
+  };
+
+  const handleUserSubmit = (values: UserValues) => {
     if (!canManageRoles) {
       return;
     }
-    const name = userDraft.name.trim();
-    const email = userDraft.email.trim();
-    if (!name || !email || !/^\d{4}$/.test(userDraft.pin)) {
-      setUserMessage('Enter a name, email, and a four-digit PIN.');
-      return;
-    }
+    const name = values.name.trim();
+    const email = values.email.trim();
     addUser({
       name,
       email,
       password: DEFAULT_PASSWORD,
-      role: userDraft.role,
-      pin: userDraft.pin,
+      role: values.role,
+      pin: values.pin,
     });
-    setUserDraft(emptyUserDraft());
-    setUserMessage(`${name} added as ${userDraft.role}.`);
+    userForm.reset(emptyUserDraft());
+    setUserMessage(`${name} added as ${values.role}.`);
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     if (!canManageSettings) {
       return;
     }
     if (
-      window.confirm(
+      await confirmAction(
         'Reset all data to the sample register? Your changes will be lost.',
       )
     ) {
@@ -575,7 +560,7 @@ const Setup = ({ embedded = false }: Props) => {
           <button
             className="icon-button"
             disabled={!canManageInventory}
-            onClick={() => deleteInventoryItem(item.id)}
+            onClick={() => handleDeleteInventory(item.id, item.name)}
             type="button"
           >
             Delete
@@ -625,7 +610,7 @@ const Setup = ({ embedded = false }: Props) => {
           <button
             className="icon-button"
             disabled={!canManageInventory}
-            onClick={() => deleteMenuItem(item.id)}
+            onClick={() => handleDeleteMenu(item.id, item.name)}
             type="button"
           >
             Delete
@@ -863,70 +848,74 @@ const Setup = ({ embedded = false }: Props) => {
                 />
               </div>
               {canManageSettings && (
-                <form className="admin-form" onSubmit={handleBalanceSubmit}>
+                <form
+                  className="admin-form"
+                  onSubmit={balanceForm.handleSubmit(handleBalanceSubmit)}
+                >
                   <div className="field-grid">
-                    <Field label="Store name">
+                    <Field
+                      label="Store name"
+                      error={balanceForm.formState.errors.storeName?.message}
+                    >
                       <AppInput
                         aria-label="Store name"
-                        onChange={(event) =>
-                          setBalanceField('storeName', event.target.value)
-                        }
                         type="text"
-                        value={balanceForm.storeName}
+                        {...balanceForm.register('storeName')}
                       />
                     </Field>
-                    <Field label="Opening cash" hint="Notes and coins on hand">
+                    <Field
+                      label="Opening cash"
+                      hint="Notes and coins on hand"
+                      error={balanceForm.formState.errors.openingCash?.message}
+                    >
                       <AppInput
                         aria-label="Opening cash"
                         min="0"
-                        onChange={(event) =>
-                          setBalanceField('openingCash', event.target.value)
-                        }
                         step="0.01"
                         type="number"
-                        value={balanceForm.openingCash}
+                        {...balanceForm.register('openingCash')}
                       />
                     </Field>
-                    <Field label="Opening bank" hint="Starting account balance">
+                    <Field
+                      label="Opening bank"
+                      hint="Starting account balance"
+                      error={balanceForm.formState.errors.openingBank?.message}
+                    >
                       <AppInput
                         aria-label="Opening bank"
                         min="0"
-                        onChange={(event) =>
-                          setBalanceField('openingBank', event.target.value)
-                        }
                         step="0.01"
                         type="number"
-                        value={balanceForm.openingBank}
+                        {...balanceForm.register('openingBank')}
                       />
                     </Field>
-                    <Field label="Opening customer debts">
+                    <Field
+                      label="Opening customer debts"
+                      error={
+                        balanceForm.formState.errors.openingCustomerDebts
+                          ?.message
+                      }
+                    >
                       <AppInput
                         aria-label="Opening customer debts"
                         min="0"
-                        onChange={(event) =>
-                          setBalanceField(
-                            'openingCustomerDebts',
-                            event.target.value,
-                          )
-                        }
                         step="0.01"
                         type="number"
-                        value={balanceForm.openingCustomerDebts}
+                        {...balanceForm.register('openingCustomerDebts')}
                       />
                     </Field>
-                    <Field label="Opening vendor debts">
+                    <Field
+                      label="Opening vendor debts"
+                      error={
+                        balanceForm.formState.errors.openingVendorDebts?.message
+                      }
+                    >
                       <AppInput
                         aria-label="Opening vendor debts"
                         min="0"
-                        onChange={(event) =>
-                          setBalanceField(
-                            'openingVendorDebts',
-                            event.target.value,
-                          )
-                        }
                         step="0.01"
                         type="number"
-                        value={balanceForm.openingVendorDebts}
+                        {...balanceForm.register('openingVendorDebts')}
                       />
                     </Field>
                   </div>
@@ -934,7 +923,9 @@ const Setup = ({ embedded = false }: Props) => {
                     submitLabel="Save balances"
                     secondaryLabel="Use sample values"
                     onSecondary={() =>
-                      setBalanceForm(balanceFormFromSettings(DEFAULT_SETTINGS))
+                      balanceForm.reset(
+                        balanceFormFromSettings(DEFAULT_SETTINGS),
+                      )
                     }
                   />
                 </form>
@@ -968,91 +959,96 @@ const Setup = ({ embedded = false }: Props) => {
               {canManageInventory && (
                 <form
                   className="admin-form form-card"
-                  onSubmit={handleInventorySubmit}
+                  onSubmit={inventoryForm.handleSubmit(handleInventorySubmit)}
                 >
                   <h3 className="panel-title">
                     {editingInventoryId ? 'Edit item' : 'Add inventory item'}
                   </h3>
                   <div className="field-grid">
-                    <Field label="Name">
+                    <Field
+                      label="Name"
+                      error={inventoryForm.formState.errors.name?.message}
+                    >
                       <AppInput
                         aria-label="Inventory item name"
-                        onChange={(event) =>
-                          setInventoryField('name', event.target.value)
-                        }
                         type="text"
-                        value={inventoryDraft.name}
+                        {...inventoryForm.register('name')}
                       />
                     </Field>
-                    <Field label="Department">
-                      <AppSelect
-                        aria-label="Department"
+                    <Field
+                      label="Department"
+                      error={inventoryForm.formState.errors.category?.message}
+                    >
+                      <FormSelect
+                        control={inventoryForm.control}
+                        label="Department"
+                        name="category"
                         options={DEPARTMENT_OPTIONS}
-                        value={inventoryDraft.category}
-                        onValueChange={(value) =>
-                          setInventoryDraft((current) => ({
-                            ...current,
-                            category: value as Department,
-                          }))
-                        }
                       />
                     </Field>
-                    <Field label="Unit" hint="e.g. kg, pieces, litres">
+                    <Field
+                      label="Unit"
+                      hint="e.g. kg, pieces, litres"
+                      error={inventoryForm.formState.errors.unit?.message}
+                    >
                       <AppInput
                         aria-label="Unit"
-                        onChange={(event) =>
-                          setInventoryField('unit', event.target.value)
-                        }
                         type="text"
-                        value={inventoryDraft.unit}
+                        {...inventoryForm.register('unit')}
                       />
                     </Field>
-                    <Field label="Opening stock">
+                    <Field
+                      label="Opening stock"
+                      error={
+                        inventoryForm.formState.errors.openingStock?.message
+                      }
+                    >
                       <AppInput
                         aria-label="Opening stock"
                         min="0"
-                        onChange={(event) =>
-                          setInventoryField('openingStock', event.target.value)
-                        }
                         step="any"
                         type="number"
-                        value={inventoryDraft.openingStock}
+                        {...inventoryForm.register('openingStock')}
                       />
                     </Field>
-                    <Field label="Cost">
+                    <Field
+                      label="Cost"
+                      error={inventoryForm.formState.errors.cost?.message}
+                    >
                       <AppInput
                         aria-label="Cost"
                         min="0"
-                        onChange={(event) =>
-                          setInventoryField('cost', event.target.value)
-                        }
                         step="0.01"
                         type="number"
-                        value={inventoryDraft.cost}
+                        {...inventoryForm.register('cost')}
                       />
                     </Field>
-                    <Field label="Reorder level">
+                    <Field
+                      label="Reorder level"
+                      error={
+                        inventoryForm.formState.errors.reorderLevel?.message
+                      }
+                    >
                       <AppInput
                         aria-label="Reorder level"
                         min="0"
-                        onChange={(event) =>
-                          setInventoryField('reorderLevel', event.target.value)
-                        }
                         step="any"
                         type="number"
-                        value={inventoryDraft.reorderLevel}
+                        {...inventoryForm.register('reorderLevel')}
                       />
                     </Field>
-                    <Field label="Target level">
+                    <Field
+                      label="Target level"
+                      error={
+                        inventoryForm.formState.errors.targetLevel?.message
+                      }
+                    >
                       <AppInput
                         aria-label="Target level"
                         min="0"
-                        onChange={(event) =>
-                          setInventoryField('targetLevel', event.target.value)
-                        }
                         step="any"
                         type="number"
-                        value={inventoryDraft.targetLevel}
+                        {...inventoryForm.register('targetLevel')}
                       />
                     </Field>
                   </div>
@@ -1099,67 +1095,67 @@ const Setup = ({ embedded = false }: Props) => {
               {canManageInventory && (
                 <form
                   className="admin-form form-card"
-                  onSubmit={handleMenuSubmit}
+                  onSubmit={menuForm.handleSubmit(handleMenuSubmit)}
                 >
                   <h3 className="panel-title">
                     {editingMenuId ? 'Edit menu item' : 'Add menu item'}
                   </h3>
                   <div className="field-grid">
-                    <Field label="Name">
+                    <Field
+                      label="Name"
+                      error={menuForm.formState.errors.name?.message}
+                    >
                       <AppInput
                         aria-label="Menu item name"
-                        onChange={(event) =>
-                          setMenuField('name', event.target.value)
-                        }
                         type="text"
-                        value={menuDraft.name}
+                        {...menuForm.register('name')}
                       />
                     </Field>
-                    <Field label="Department">
-                      <AppSelect
-                        aria-label="Department"
+                    <Field
+                      label="Department"
+                      error={menuForm.formState.errors.category?.message}
+                    >
+                      <FormSelect
+                        control={menuForm.control}
+                        label="Department"
+                        name="category"
                         options={DEPARTMENT_OPTIONS}
-                        value={menuDraft.department}
-                        onValueChange={(value) =>
-                          setMenuDraft((current) => ({
-                            ...current,
-                            department: value as Department,
-                          }))
-                        }
                       />
                     </Field>
-                    <Field label="Price">
+                    <Field
+                      label="Price"
+                      error={menuForm.formState.errors.price?.message}
+                    >
                       <AppInput
                         aria-label="Price"
                         min="0"
-                        onChange={(event) =>
-                          setMenuField('price', event.target.value)
-                        }
                         step="0.01"
                         type="number"
-                        value={menuDraft.price}
+                        {...menuForm.register('price')}
                       />
                     </Field>
-                    <Field label="Prep time" hint="Minutes">
+                    <Field
+                      label="Prep time"
+                      hint="Minutes"
+                      error={menuForm.formState.errors.prepTime?.message}
+                    >
                       <AppInput
                         aria-label="Prep time"
                         min="0"
-                        onChange={(event) =>
-                          setMenuField('prepTime', event.target.value)
-                        }
                         step="1"
                         type="number"
-                        value={menuDraft.prepTime}
+                        {...menuForm.register('prepTime')}
                       />
                     </Field>
-                    <Field label="Badge" hint="Optional menu label">
+                    <Field
+                      label="Badge"
+                      hint="Optional menu label"
+                      error={menuForm.formState.errors.badge?.message}
+                    >
                       <AppInput
                         aria-label="Badge"
-                        onChange={(event) =>
-                          setMenuField('badge', event.target.value)
-                        }
                         type="text"
-                        value={menuDraft.badge}
+                        {...menuForm.register('badge')}
                       />
                     </Field>
                   </div>
@@ -1174,7 +1170,7 @@ const Setup = ({ embedded = false }: Props) => {
                       <button
                         className="secondary-button"
                         disabled={
-                          !canManageInventory || menuDraft.recipe.length >= 3
+                          !canManageInventory || recipeFields.length >= 3
                         }
                         onClick={addRecipeLine}
                         type="button"
@@ -1182,14 +1178,22 @@ const Setup = ({ embedded = false }: Props) => {
                         Add line
                       </button>
                     </div>
-                    {menuDraft.recipe.length === 0 && (
+                    {recipeFields.length === 0 && (
                       <p className="admin-note">No recipe lines added.</p>
                     )}
-                    {menuDraft.recipe.map((line, index) => (
-                      <div className="field-grid" key={line.itemId || 'empty'}>
-                        <Field label={`Ingredient ${index + 1}`}>
-                          <AppSelect
-                            aria-label={`Ingredient ${index + 1}`}
+                    {recipeFields.map((field, index) => (
+                      <div className="field-grid" key={field.id}>
+                        <Field
+                          label={`Ingredient ${index + 1}`}
+                          error={
+                            menuForm.formState.errors.recipe?.[index]?.itemId
+                              ?.message
+                          }
+                        >
+                          <FormSelect
+                            control={menuForm.control}
+                            label={`Ingredient ${index + 1}`}
+                            name={`recipe.${index}.itemId`}
                             options={[
                               { key: '', label: 'Choose item' },
                               ...data.inventory.map((item) => ({
@@ -1198,24 +1202,21 @@ const Setup = ({ embedded = false }: Props) => {
                               })),
                             ]}
                             placeholder="Choose item"
-                            value={line.itemId}
-                            onValueChange={(value) =>
-                              setRecipeLine(index, { itemId: value })
-                            }
                           />
                         </Field>
-                        <Field label="Quantity">
+                        <Field
+                          label="Quantity"
+                          error={
+                            menuForm.formState.errors.recipe?.[index]?.quantity
+                              ?.message
+                          }
+                        >
                           <AppInput
                             aria-label="Quantity"
                             min="0"
-                            onChange={(event) =>
-                              setRecipeLine(index, {
-                                quantity: event.target.value,
-                              })
-                            }
                             step="any"
                             type="number"
-                            value={line.quantity}
+                            {...menuForm.register(`recipe.${index}.quantity`)}
                           />
                         </Field>
                         <Field label="Actions">
@@ -1271,26 +1272,29 @@ const Setup = ({ embedded = false }: Props) => {
                   title="Add a teammate"
                   subtitle={`New accounts use the password ${DEFAULT_PASSWORD}.`}
                 >
-                  <form className="admin-form" onSubmit={handleUserSubmit}>
+                  <form
+                    className="admin-form"
+                    onSubmit={userForm.handleSubmit(handleUserSubmit)}
+                  >
                     <div className="field-grid">
-                      <Field label="Name">
+                      <Field
+                        label="Name"
+                        error={userForm.formState.errors.name?.message}
+                      >
                         <AppInput
                           aria-label="User name"
-                          onChange={(event) =>
-                            setUserField('name', event.target.value)
-                          }
                           type="text"
-                          value={userDraft.name}
+                          {...userForm.register('name')}
                         />
                       </Field>
-                      <Field label="Email">
+                      <Field
+                        label="Email"
+                        error={userForm.formState.errors.email?.message}
+                      >
                         <AppInput
                           aria-label="User email"
-                          onChange={(event) =>
-                            setUserField('email', event.target.value)
-                          }
                           type="email"
-                          value={userDraft.email}
+                          {...userForm.register('email')}
                         />
                       </Field>
                       <Field
@@ -1306,30 +1310,27 @@ const Setup = ({ embedded = false }: Props) => {
                       </Field>
                       <Field
                         label="Role"
-                        hint={ROLE_ACCESS[userDraft.role].hint}
+                        hint={ROLE_ACCESS[userForm.watch('role')].hint}
+                        error={userForm.formState.errors.role?.message}
                       >
-                        <AppSelect
-                          aria-label="Role"
+                        <FormSelect
+                          control={userForm.control}
+                          label="Role"
+                          name="role"
                           options={ROLE_OPTIONS}
-                          value={userDraft.role}
-                          onValueChange={(value) =>
-                            setUserDraft((current) => ({
-                              ...current,
-                              role: value as Role,
-                            }))
-                          }
                         />
                       </Field>
-                      <Field label="PIN" hint="Four digits used to unlock">
+                      <Field
+                        label="PIN"
+                        hint="Four digits used to unlock"
+                        error={userForm.formState.errors.pin?.message}
+                      >
                         <AppInput
                           aria-label="PIN"
                           inputMode="numeric"
                           maxLength={4}
-                          onChange={(event) =>
-                            setUserField('pin', event.target.value)
-                          }
                           type="password"
-                          value={userDraft.pin}
+                          {...userForm.register('pin')}
                         />
                       </Field>
                     </div>
@@ -1340,7 +1341,7 @@ const Setup = ({ embedded = false }: Props) => {
                       submitLabel="Add user"
                       secondaryLabel="Clear"
                       onSecondary={() => {
-                        setUserDraft(emptyUserDraft());
+                        userForm.reset(emptyUserDraft());
                         setUserMessage('');
                       }}
                     />

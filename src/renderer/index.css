@@ -277,7 +277,9 @@
     border-radius: 14px;
     color: #7f918d;
     text-decoration: none;
-    transition: background-color 140ms ease, color 140ms ease;
+    transition:
+      background-color 140ms ease,
+      color 140ms ease;
   }
 
   .rail-link:hover {
@@ -431,7 +433,9 @@
     border-radius: 18px;
     background: #11191b;
     color: #f3f1e9;
-    transition: transform 140ms ease, border-color 140ms ease,
+    transition:
+      transform 140ms ease,
+      border-color 140ms ease,
       box-shadow 140ms ease;
   }
 
@@ -462,7 +466,10 @@
   .menu-visual::before {
     position: absolute;
     inset: 0;
-    background-image: linear-gradient(rgba(143, 160, 155, 0.12) 1px, transparent 1px),
+    background-image: linear-gradient(
+        rgba(143, 160, 155, 0.12) 1px,
+        transparent 1px
+      ),
       linear-gradient(90deg, rgba(143, 160, 155, 0.12) 1px, transparent 1px);
     background-size: 14px 14px;
     content: '';
@@ -492,7 +499,8 @@
     height: 72px;
     border-radius: 50%;
     background: linear-gradient(145deg, #f7f5ee, #d8d5c9);
-    box-shadow: inset 0 0 0 5px rgba(11, 16, 18, 0.08),
+    box-shadow:
+      inset 0 0 0 5px rgba(11, 16, 18, 0.08),
       0 12px 24px rgba(0, 0, 0, 0.4);
     transform: translate(-50%, -50%);
   }
@@ -624,7 +632,9 @@
     color: #f3f1e9;
     font-size: 12px;
     font-weight: 600;
-    transition: border-color 140ms ease, color 140ms ease;
+    transition:
+      border-color 140ms ease,
+      color 140ms ease;
   }
 
   .card-add:hover {
@@ -790,9 +800,14 @@
     color: #f3f1e9;
   }
 
-  .qty-stepper button:hover {
+  .qty-stepper button:hover:not(:disabled) {
     background: #1b2729;
     color: #ffb020;
+  }
+
+  .qty-stepper button:disabled {
+    color: #52605d;
+    cursor: not-allowed;
   }
 
   .qty-stepper span {
@@ -1085,6 +1100,20 @@
     background: var(--surface-2);
   }
 
+  .table-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px 12px;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+
+  .table-pagination > span {
+    white-space: nowrap;
+  }
+
   .data-table {
     width: 100%;
     border-collapse: collapse;
@@ -1239,7 +1268,9 @@
     color: var(--text);
     font-size: 13px;
     font-weight: 500;
-    transition: border-color 140ms ease, background-color 140ms ease,
+    transition:
+      border-color 140ms ease,
+      background-color 140ms ease,
       color 140ms ease;
   }
 
@@ -1258,7 +1289,9 @@
     color: var(--surface-0);
     font-size: 13px;
     font-weight: 700;
-    transition: filter 140ms ease, transform 140ms ease;
+    transition:
+      filter 140ms ease,
+      transform 140ms ease;
   }
 
   .primary-button:hover {
@@ -1556,7 +1589,9 @@
     border: 1px solid #3b5254;
     border-radius: 50%;
     background: #0e1517;
-    transition: background-color 120ms ease, border-color 120ms ease,
+    transition:
+      background-color 120ms ease,
+      border-color 120ms ease,
       transform 120ms ease;
   }
 
@@ -1588,7 +1623,9 @@
     font-family: 'IBM Plex Mono', ui-monospace, monospace;
     font-size: 20px;
     font-weight: 600;
-    transition: border-color 120ms ease, background-color 120ms ease;
+    transition:
+      border-color 120ms ease,
+      background-color 120ms ease;
   }
 
   .pin-key:hover {
@@ -2041,7 +2078,9 @@
     font: inherit;
     font-size: 12px;
     font-weight: 600;
-    transition: background 160ms ease, color 160ms ease;
+    transition:
+      background 160ms ease,
+      color 160ms ease;
   }
 
   .thermal-transport__option[data-active='true'] {
@@ -2086,6 +2125,39 @@
     box-shadow: 0 0 0 4px rgba(84, 214, 160, 0.12);
   }
 
+  .confirm-modal {
+    border: 1px solid #1f2b2e;
+    border-radius: 18px;
+    background: #11191b;
+    color: #f3f1e9;
+  }
+
+  .confirm-modal__header {
+    color: #f3f1e9;
+  }
+
+  .confirm-modal__body {
+    color: #8fa09b;
+  }
+
+  .confirm-modal__message {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .confirm-modal__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .confirm-modal__confirm[data-tone='danger'] {
+    background: #ff6b5e;
+    color: #0b1012;
+  }
+
+  .receipt-print-stack,
   .receipt-print {
     display: none;
   }
@@ -2099,7 +2171,8 @@
 @media print {
   html,
   body,
-  #root {
+  #root,
+  .app-root {
     height: auto;
     background: #fff !important;
   }
@@ -2108,15 +2181,23 @@
     visibility: hidden !important;
   }
 
+  .app-root > :not(.receipt-print-stack) {
+    display: none !important;
+  }
+
+  .receipt-print-stack,
+  .receipt-print-stack *,
   .receipt-print,
   .receipt-print * {
     visibility: visible !important;
   }
 
+  .receipt-print-stack {
+    display: block !important;
+    width: 74mm;
+  }
+
   .receipt-print {
-    position: absolute;
-    top: 0;
-    left: 0;
     display: block !important;
     width: 74mm;
     padding: 0;
@@ -2125,6 +2206,13 @@
     font-family: 'IBM Plex Mono', ui-monospace, monospace;
     font-size: 11px;
     line-height: 1.45;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .receipt-print:last-child {
+    break-after: auto;
+    page-break-after: auto;
   }
 
   .receipt-print__brand {
@@ -2150,6 +2238,13 @@
 
   .receipt-print__brand span {
     font-size: 9px;
+  }
+
+  .receipt-print__copy {
+    margin-top: 10px;
+    text-align: center;
+    font-weight: 700;
+    letter-spacing: 0.08em;
   }
 
   .receipt-print__meta,

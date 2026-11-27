@@ -9,6 +9,9 @@ import { dateKey } from 'store/seed';
 
 export const roundMoney = (value: number) => Math.round(value * 100) / 100;
 
+const safeQuantity = (value: number) =>
+  Number.isFinite(value) && value > 0 ? value : 0;
+
 export const saleCost = (sale: SaleRecord) =>
   sale.lines.reduce((sum, line) => sum + (line.cost || 0) * line.quantity, 0);
 
@@ -175,11 +178,18 @@ export const stockLevels = (data: BentoData): Record<string, number> => {
   });
 
   data.sales.forEach((sale) => {
+    if (sale.status === 'Refunded') {
+      return;
+    }
+
     sale.lines.forEach((line) => {
       const menuItem = data.menu.find((item) => item.id === line.itemId);
-      menuItem?.recipe.forEach((part) => {
-        if (levels[part.itemId] !== undefined) {
-          levels[part.itemId] -= part.quantity * line.quantity;
+      const recipe = line.recipe ?? menuItem?.recipe ?? [];
+      recipe.forEach((part) => {
+        const consumed =
+          safeQuantity(part.quantity) * safeQuantity(line.quantity);
+        if (levels[part.itemId] !== undefined && consumed > 0) {
+          levels[part.itemId] -= consumed;
         }
       });
     });
@@ -213,13 +223,15 @@ export const availablePortions = (
     return Infinity;
   }
 
-  return Math.min(
-    ...menuItem.recipe.map((part) => {
-      const available = levels[part.itemId] ?? 0;
-      return part.quantity > 0
-        ? Math.floor(available / part.quantity)
-        : Infinity;
-    }),
+  return Math.max(
+    0,
+    Math.min(
+      ...menuItem.recipe.map((part) => {
+        const available = Math.max(0, levels[part.itemId] ?? 0);
+        const quantity = safeQuantity(part.quantity);
+        return quantity > 0 ? Math.floor(available / quantity) : Infinity;
+      }),
+    ),
   );
 };
 

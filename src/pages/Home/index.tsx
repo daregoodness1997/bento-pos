@@ -1,15 +1,16 @@
 import { useMemo, useState } from 'react';
-import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
 
 import { DashboardLayout } from 'layouts';
 import {
-  AppDatePicker,
   AppInput,
-  AppSelect,
   EmptyState,
   Field,
   FormActions,
+  FormDatePicker,
+  FormSelect,
   PageHeader,
   Panel,
   RecordTable,
@@ -18,6 +19,8 @@ import {
 } from 'components';
 import type { TableColumn } from 'components';
 import { useStore } from 'context';
+import { customerSchema, debtPaymentSchema } from 'schemas/forms';
+import type { CustomerValues, DebtPaymentValues } from 'schemas/forms';
 import { dateKey } from 'store/seed';
 import type { PayMethod, SaleRecord } from 'types/store';
 import {
@@ -69,14 +72,39 @@ const Home = () => {
   const today = dateKey();
 
   const [collectOpen, setCollectOpen] = useState(false);
-  const [customerId, setCustomerId] = useState(data.customers[0]?.id ?? '');
-  const [amount, setAmount] = useState('');
-  const [method, setMethod] = useState<PayMethod>('Cash');
-  const [reference, setReference] = useState('');
-  const [date, setDate] = useState(today);
   const [customerFormOpen, setCustomerFormOpen] = useState(false);
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
+
+  const customerForm = useForm<CustomerValues>({
+    resolver: zodResolver(customerSchema),
+    defaultValues: { name: '', phone: '' },
+  });
+
+  const paymentForm = useForm<DebtPaymentValues>({
+    resolver: zodResolver(debtPaymentSchema),
+    defaultValues: {
+      customerId: data.customers[0]?.id ?? '',
+      saleId: '',
+      amount: '',
+      method: 'Cash',
+      reference: '',
+      date: today,
+    },
+  });
+
+  const {
+    handleSubmit: handleCustomerSubmit,
+    register: registerCustomer,
+    reset: resetCustomer,
+    formState: { errors: customerErrors },
+  } = customerForm;
+
+  const {
+    control: paymentControl,
+    handleSubmit: handlePaymentSubmit,
+    register: registerPayment,
+    reset: resetPayment,
+    formState: { errors: paymentErrors },
+  } = paymentForm;
 
   const canCollect = can('collectDebt');
   const canManageCustomers = can('manageCustomers');
@@ -259,44 +287,34 @@ const Home = () => {
     },
   ];
 
-  const handleCollect = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!canCollect || !customerId) {
-      return;
-    }
-
-    const value = Number(amount);
-    if (!Number.isFinite(value) || value <= 0) {
+  const handleCollect = (values: DebtPaymentValues) => {
+    if (!canCollect || !values.customerId) {
       return;
     }
 
     addDebtPayment({
-      customerId,
-      amount: roundMoney(value),
-      method,
-      reference: reference.trim(),
-      date,
+      customerId: values.customerId,
+      amount: roundMoney(Number(values.amount)),
+      method: values.method,
+      reference: values.reference.trim(),
+      date: values.date,
     });
-    setAmount('');
-    setReference('');
-    setDate(dateKey());
+    resetPayment({
+      ...values,
+      amount: '',
+      reference: '',
+      date: dateKey(),
+    });
     setCollectOpen(false);
   };
 
-  const handleAddCustomer = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleAddCustomer = (values: CustomerValues) => {
     if (!canManageCustomers) {
       return;
     }
 
-    const name = customerName.trim();
-    if (!name) {
-      return;
-    }
-
-    addCustomer({ name, phone: customerPhone.trim() });
-    setCustomerName('');
-    setCustomerPhone('');
+    addCustomer({ name: values.name.trim(), phone: values.phone.trim() });
+    resetCustomer({ name: '', phone: '' });
     setCustomerFormOpen(false);
   };
 
@@ -375,24 +393,22 @@ const Home = () => {
             {customerFormOpen && canManageCustomers && (
               <form
                 className="form-card admin-form"
-                onSubmit={handleAddCustomer}
+                onSubmit={handleCustomerSubmit(handleAddCustomer)}
               >
                 <div className="field-grid">
-                  <Field label="Name">
+                  <Field label="Name" error={customerErrors.name?.message}>
                     <AppInput
                       aria-label="Customer name"
                       isRequired
-                      onChange={(event) => setCustomerName(event.target.value)}
                       type="text"
-                      value={customerName}
+                      {...registerCustomer('name')}
                     />
                   </Field>
-                  <Field label="Phone">
+                  <Field label="Phone" error={customerErrors.phone?.message}>
                     <AppInput
                       aria-label="Customer phone"
-                      onChange={(event) => setCustomerPhone(event.target.value)}
                       type="tel"
-                      value={customerPhone}
+                      {...registerCustomer('phone')}
                     />
                   </Field>
                 </div>
@@ -405,56 +421,63 @@ const Home = () => {
             )}
 
             {collectOpen && canCollect && (
-              <form className="form-card admin-form" onSubmit={handleCollect}>
+              <form
+                className="form-card admin-form"
+                onSubmit={handlePaymentSubmit(handleCollect)}
+              >
                 <div className="field-grid">
-                  <Field label="Customer">
-                    <AppSelect
-                      aria-label="Customer"
+                  <Field
+                    label="Customer"
+                    error={paymentErrors.customerId?.message}
+                  >
+                    <FormSelect
+                      control={paymentControl}
                       isRequired
-                      onValueChange={setCustomerId}
+                      label="Customer"
+                      name="customerId"
                       options={data.customers.map((customer) => ({
                         key: customer.id,
                         label: customer.name,
                       }))}
-                      value={customerId}
                     />
                   </Field>
-                  <Field label="Amount">
+                  <Field label="Amount" error={paymentErrors.amount?.message}>
                     <AppInput
                       aria-label="Payment amount"
                       isRequired
                       min="0.01"
-                      onChange={(event) => setAmount(event.target.value)}
                       step="0.01"
                       type="number"
-                      value={amount}
+                      {...registerPayment('amount')}
                     />
                   </Field>
-                  <Field label="Method">
-                    <AppSelect
-                      aria-label="Payment method"
-                      onValueChange={(value) => setMethod(value as PayMethod)}
+                  <Field label="Method" error={paymentErrors.method?.message}>
+                    <FormSelect
+                      control={paymentControl}
+                      label="Payment method"
+                      name="method"
                       options={PAY_METHODS.map((entry) => ({
                         key: entry,
                         label: entry,
                       }))}
-                      value={method}
                     />
                   </Field>
-                  <Field label="Reference">
+                  <Field
+                    label="Reference"
+                    error={paymentErrors.reference?.message}
+                  >
                     <AppInput
                       aria-label="Payment reference"
-                      onChange={(event) => setReference(event.target.value)}
                       type="text"
-                      value={reference}
+                      {...registerPayment('reference')}
                     />
                   </Field>
-                  <Field label="Date">
-                    <AppDatePicker
-                      aria-label="Payment date"
+                  <Field label="Date" error={paymentErrors.date?.message}>
+                    <FormDatePicker
+                      control={paymentControl}
                       isRequired
-                      onValueChange={setDate}
-                      value={date}
+                      label="Payment date"
+                      name="date"
                     />
                   </Field>
                 </div>

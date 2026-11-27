@@ -30,8 +30,6 @@ import type {
 } from 'types/store';
 import { createSeedData, DATA_VERSION, dateKey } from 'store/seed';
 
-const STORAGE_KEY = 'bento-pos-data-v1';
-
 export type Permission =
   | 'manageRoles'
   | 'manageSettings'
@@ -205,6 +203,31 @@ const totalsFor = (lines: OrderLine[], settings: AppSettings) => {
   return { subtotal, vat, total: round(subtotal + vat) };
 };
 
+const snapshotLines = (
+  lines: OrderLine[],
+  menu: MenuItem[],
+  inventory: InventoryItem[],
+): OrderLine[] =>
+  lines.map((line) => {
+    const recipe =
+      line.recipe ?? menu.find((item) => item.id === line.itemId)?.recipe ?? [];
+    const cost = recipe.length
+      ? recipe.reduce((sum, part) => {
+          const item = inventory.find((entry) => entry.id === part.itemId);
+          return sum + (item ? item.cost * part.quantity : 0);
+        }, 0)
+      : line.cost;
+
+    return {
+      name: line.name,
+      quantity: line.quantity,
+      unitPrice: line.unitPrice,
+      cost: round(cost),
+      itemId: line.itemId,
+      recipe: recipe.map((part) => ({ ...part })),
+    };
+  });
+
 const withAudit = (current: BentoData, input: AuditInput): BentoData => {
   const actor = current.users.find((user) => user.id === current.sessionUserId);
   return {
@@ -222,40 +245,77 @@ const withAudit = (current: BentoData, input: AuditInput): BentoData => {
   };
 };
 
-const loadData = (): BentoData => {
-  if (typeof window === 'undefined') {
-    return createSeedData();
+const normalizeData = (value: unknown): BentoData | null => {
+  if (!value || typeof value !== 'object') {
+    return null;
   }
 
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return createSeedData();
-    }
-    const parsed = JSON.parse(raw) as BentoData;
-    if (parsed.version !== DATA_VERSION || !Array.isArray(parsed.sales)) {
-      return createSeedData();
-    }
-    const seed = createSeedData();
-    return {
-      ...seed,
-      ...parsed,
-      settings: { ...seed.settings, ...parsed.settings },
-    };
-  } catch {
-    return createSeedData();
+  const parsed = value as Partial<BentoData>;
+  if (parsed.version !== DATA_VERSION || !Array.isArray(parsed.sales)) {
+    return null;
   }
+
+  const seed = createSeedData();
+  return {
+    ...seed,
+    ...parsed,
+    settings: { ...seed.settings, ...parsed.settings },
+  } as BentoData;
+};
+
+const getStoreBridge = () =>
+  typeof window === 'undefined' ? undefined : window.electron;
+
+const loadPersistedData = async (): Promise<BentoData | null> => {
+  const bridge = getStoreBridge();
+  if (!bridge) {
+    return null;
+  }
+
+  return normalizeData(await bridge.loadStore());
 };
 
 export const StoreProvider = ({ children }: { children: React.ReactNode }) => {
-  const [data, setData] = useState<BentoData>(loadData);
+  const [data, setData] = useState<BentoData>(createSeedData);
+  const [hydrated, setHydrated] = useState(() => !getStoreBridge());
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
+    let cancelled = false;
+
+    if (!hydrated) {
+      const hydrate = async () => {
+        const stored = await loadPersistedData();
+        if (cancelled) {
+          return undefined;
+        }
+        if (stored) {
+          setData(stored);
+        }
+        setHydrated(true);
+        return undefined;
+      };
+
+      hydrate().catch(() => {
+        if (!cancelled) {
+          setHydrated(true);
+        }
+      });
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) {
       return;
     }
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }, [data]);
+
+    getStoreBridge()
+      ?.saveStore(data)
+      .catch(() => undefined);
+  }, [data, hydrated]);
 
   const currentUser = useMemo(
     () => data.users.find((user) => user.id === data.sessionUserId) ?? null,
@@ -760,7 +820,8 @@ export const StoreProvider = ({ children }: { children: React.ReactNode }) => {
   const recordSale = useCallback(
     (input: SaleInput) => {
       require('recordSale');
-      const totals = totalsFor(input.lines, data.settings);
+      const orderLines = snapshotLines(input.lines, data.menu, data.inventory);
+      const totals = totalsFor(orderLines, data.settings);
       const saleNumbers = data.sales
         .map((sale) => Number(sale.id.replace('#', '')))
         .filter((value) => Number.isFinite(value));
@@ -777,8 +838,8 @@ export const StoreProvider = ({ children }: { children: React.ReactNode }) => {
         status: input.status ?? (input.tender === 'Credit' ? 'Credit' : 'Paid'),
         customerId: input.customerId,
         staffId: actorId(input.staffId),
-        items: describeLines(input.lines),
-        lines: input.lines,
+        items: describeLines(orderLines),
+        lines: orderLines,
         ...totals,
         amountPaid:
           input.tender === 'Credit' ? 0 : input.amountPaid ?? totals.total,
@@ -787,12 +848,20 @@ export const StoreProvider = ({ children }: { children: React.ReactNode }) => {
       apply((current) => ({ ...current, sales: [record, ...current.sales] }), {
         action: 'create',
         entity: 'Sale',
-        summary: `Recorded sale with ${input.lines.length} line(s).`,
+        summary: `Recorded sale with ${orderLines.length} line(s).`,
       });
 
       return record;
     },
-    [actorId, apply, data.sales, data.settings, require],
+    [
+      actorId,
+      apply,
+      data.inventory,
+      data.menu,
+      data.sales,
+      data.settings,
+      require,
+    ],
   );
 
   const updateSale = useCallback(
@@ -808,6 +877,11 @@ export const StoreProvider = ({ children }: { children: React.ReactNode }) => {
             const merged = {
               ...sale,
               ...patch,
+              lines: snapshotLines(
+                patch.lines ?? sale.lines,
+                current.menu,
+                current.inventory,
+              ),
               updatedAt: new Date().toISOString(),
             };
             const totals = totalsFor(merged.lines, current.settings);

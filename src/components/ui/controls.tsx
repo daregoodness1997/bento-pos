@@ -1,4 +1,5 @@
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ComponentPropsWithoutRef } from 'react';
+import { forwardRef } from 'react';
 import { parseDate } from '@internationalized/date';
 import {
   Checkbox,
@@ -61,11 +62,12 @@ const checkboxClassNames = {
   label: 'text-[13px] text-foreground',
 };
 
-export const AppInput = ({
-  classNames,
-  ...props
-}: ComponentProps<typeof Input>) => (
+export const AppInput = forwardRef<
+  HTMLInputElement,
+  ComponentPropsWithoutRef<typeof Input>
+>(({ classNames, ...props }, ref) => (
   <Input
+    ref={ref}
     radius="lg"
     size="sm"
     variant="bordered"
@@ -73,13 +75,15 @@ export const AppInput = ({
     classNames={{ ...inputClassNames, ...classNames }}
     {...props}
   />
-);
+));
+AppInput.displayName = 'AppInput';
 
-export const AppTextarea = ({
-  classNames,
-  ...props
-}: ComponentProps<typeof Textarea>) => (
+export const AppTextarea = forwardRef<
+  HTMLTextAreaElement,
+  ComponentPropsWithoutRef<typeof Textarea>
+>(({ classNames, ...props }, ref) => (
   <Textarea
+    ref={ref}
     radius="lg"
     size="sm"
     variant="bordered"
@@ -87,7 +91,8 @@ export const AppTextarea = ({
     classNames={{ ...textareaClassNames, ...classNames }}
     {...props}
   />
-);
+));
+AppTextarea.displayName = 'AppTextarea';
 
 export interface AppSelectOption {
   key: string;

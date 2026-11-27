@@ -2,6 +2,7 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -10,6 +11,7 @@ import { flushSync } from 'react-dom';
 import ReceiptPrint from '../components/ReceiptPrint';
 import type { OrderRecord } from './OrderContext';
 import { buildEscPosReceipt } from '../utils/escpos';
+import { RECEIPT_COPIES } from '../utils/receipt';
 import {
   connectThermalPrinter,
   hasThermalPrinter,
@@ -24,6 +26,9 @@ import {
   isUsbThermalSupported,
   sendUsbThermalBytes,
 } from '../utils/thermalUsb';
+
+const NETWORK_PRINTER_KEY = 'bento-network-printer';
+const THERMAL_TRANSPORT_KEY = 'bento-thermal-transport';
 
 export type ThermalTransport = 'usb' | 'serial' | 'network';
 
@@ -51,21 +56,17 @@ interface Props {
   children: React.ReactNode;
 }
 
-const NETWORK_PRINTER_KEY = 'bento-network-printer';
-const THERMAL_TRANSPORT_KEY = 'bento-thermal-transport';
-
 const PrintContext = createContext<PrintContextValue | undefined>(undefined);
 
-const readNetworkPrinter = (): NetworkPrinterTarget | null => {
+const parseNetworkPrinter = (
+  raw: string | null,
+): NetworkPrinterTarget | null => {
+  if (!raw) {
+    return null;
+  }
+
   try {
-    const raw = window.localStorage.getItem(NETWORK_PRINTER_KEY);
-
-    if (!raw) {
-      return null;
-    }
-
     const parsed = JSON.parse(raw) as NetworkPrinterTarget;
-
     if (
       typeof parsed.host === 'string' &&
       typeof parsed.port === 'number' &&
@@ -80,19 +81,8 @@ const readNetworkPrinter = (): NetworkPrinterTarget | null => {
   return null;
 };
 
-const readThermalTransport = (): ThermalTransport => {
-  try {
-    const value = window.localStorage.getItem(THERMAL_TRANSPORT_KEY);
-
-    if (value === 'usb' || value === 'serial' || value === 'network') {
-      return value;
-    }
-  } catch {
-    return 'usb';
-  }
-
-  return 'usb';
-};
+const parseThermalTransport = (raw: string | null): ThermalTransport =>
+  raw === 'serial' || raw === 'network' ? raw : 'usb';
 
 const canUseTransport = (transport: ThermalTransport) => {
   if (transport === 'usb') {
@@ -126,45 +116,87 @@ const isTransportReady = (
 const errorMessage = (error: unknown, fallback: string) =>
   error instanceof Error ? error.message : fallback;
 
+const getPrintBridge = () =>
+  typeof window === 'undefined' ? undefined : window.electron;
+
 export const PrintProvider = ({ children }: Props) => {
   const [receipt, setReceipt] = useState<OrderRecord | null>(null);
   const [status, setStatus] = useState('');
   const [networkPrinterState, setNetworkPrinterState] =
-    useState(readNetworkPrinter);
+    useState<NetworkPrinterTarget | null>(null);
   const [thermalTransportState, setThermalTransportState] =
-    useState(readThermalTransport);
+    useState<ThermalTransport>('usb');
   const [thermalPortReady, setThermalPortReady] = useState(hasThermalPrinter);
   const [usbReady, setUsbReady] = useState(hasUsbThermalPrinter);
+
+  useEffect(() => {
+    let cancelled = false;
+    const bridge = getPrintBridge();
+
+    if (bridge) {
+      const hydrate = async () => {
+        const [printerRaw, transportRaw] = await Promise.all([
+          bridge.getPreference(NETWORK_PRINTER_KEY),
+          bridge.getPreference(THERMAL_TRANSPORT_KEY),
+        ]);
+        if (cancelled) {
+          return undefined;
+        }
+
+        const printer = parseNetworkPrinter(printerRaw);
+        if (printer) {
+          setNetworkPrinterState(printer);
+        }
+
+        if (transportRaw) {
+          setThermalTransportState(parseThermalTransport(transportRaw));
+        }
+
+        return undefined;
+      };
+
+      hydrate().catch(() => undefined);
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const setNetworkPrinter = useCallback(
     (target: NetworkPrinterTarget | null) => {
       setNetworkPrinterState(target);
-
-      try {
-        if (target) {
-          window.localStorage.setItem(
-            NETWORK_PRINTER_KEY,
-            JSON.stringify(target),
-          );
-        } else {
-          window.localStorage.removeItem(NETWORK_PRINTER_KEY);
-        }
-      } catch (error) {
-        setStatus(errorMessage(error, 'Printer setting could not be saved.'));
+      const bridge = getPrintBridge();
+      if (!bridge) {
+        return;
       }
+
+      const request = target
+        ? bridge.setPreference(NETWORK_PRINTER_KEY, JSON.stringify(target))
+        : bridge.removePreference(NETWORK_PRINTER_KEY);
+      request.catch((error) => {
+        setStatus(errorMessage(error, 'Printer setting could not be saved.'));
+      });
     },
     [],
   );
 
   const setThermalTransport = useCallback((value: ThermalTransport) => {
     setThermalTransportState(value);
-
-    try {
-      window.localStorage.setItem(THERMAL_TRANSPORT_KEY, value);
-      setStatus('Thermal printer transport updated.');
-    } catch (error) {
-      setStatus(errorMessage(error, 'Printer setting could not be saved.'));
+    const bridge = getPrintBridge();
+    if (!bridge) {
+      return;
     }
+
+    bridge
+      .setPreference(THERMAL_TRANSPORT_KEY, value)
+      .then(() => {
+        setStatus('Thermal printer transport updated.');
+        return undefined;
+      })
+      .catch((error) => {
+        setStatus(errorMessage(error, 'Printer setting could not be saved.'));
+      });
   }, []);
 
   const printReceipt = useCallback(async (order: OrderRecord) => {
@@ -184,34 +216,42 @@ export const PrintProvider = ({ children }: Props) => {
 
   const printThermal = useCallback(
     async (order: OrderRecord) => {
-      const bytes = buildEscPosReceipt(order);
+      const receiptBytes = RECEIPT_COPIES.map((copy) =>
+        buildEscPosReceipt(order, copy),
+      );
+      const sendCopies = async (send: (bytes: Uint8Array) => Promise<void>) => {
+        await receiptBytes.reduce(
+          (chain, bytes) => chain.then(() => send(bytes)),
+          Promise.resolve(),
+        );
+      };
 
       try {
-        setStatus('Sending receipt to thermal printer...');
+        setStatus('Sending merchant and customer receipts...');
 
         if (thermalTransportState === 'usb') {
-          await sendUsbThermalBytes(bytes);
+          await sendCopies(sendUsbThermalBytes);
           setUsbReady(true);
-          setStatus('Thermal receipt sent via WebUSB.');
+          setStatus('Merchant and customer receipts sent via WebUSB.');
           return;
         }
 
         if (thermalTransportState === 'serial') {
-          await sendThermalBytes(bytes);
+          await sendCopies(sendThermalBytes);
           setThermalPortReady(true);
-          setStatus('Thermal receipt sent via Web Serial.');
+          setStatus('Merchant and customer receipts sent via Web Serial.');
           return;
         }
 
-        if (!window.electron?.printEscPos || !networkPrinterState) {
+        const { electron } = window;
+        if (!electron?.printEscPos || !networkPrinterState) {
           throw new Error('Save a network printer in Electron first.');
         }
 
-        await window.electron.printEscPos(
-          Array.from(bytes),
-          networkPrinterState,
-        );
-        setStatus('Thermal receipt sent over the network.');
+        await sendCopies(async (bytes) => {
+          await electron.printEscPos(Array.from(bytes), networkPrinterState);
+        });
+        setStatus('Merchant and customer receipts sent over the network.');
       } catch (error) {
         if (isUsbDeviceSelectionCancelled(error)) {
           setStatus('Printer selection cancelled. No receipt was sent.');

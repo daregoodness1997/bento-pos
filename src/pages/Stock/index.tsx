@@ -1,14 +1,16 @@
-import React, { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
 
 import { DashboardLayout } from 'layouts';
 import {
   AppCheckbox,
-  AppDatePicker,
   AppInput,
-  AppSelect,
   EmptyState,
   Field,
   FormActions,
+  FormDatePicker,
+  FormSelect,
   PageHeader,
   Panel,
   RecordTable,
@@ -17,7 +19,17 @@ import {
   StatTile,
   Tabs,
 } from 'components';
-import { useStore } from 'context';
+import { useConfirm, useStore } from 'context';
+import {
+  deliverySchema,
+  inventoryItemSchema,
+  lossSchema,
+  stockCountSchema,
+  type DeliveryValues,
+  type InventoryItemValues,
+  type LossValues,
+  type StockCountValues,
+} from 'schemas/forms';
 import { dateKey } from 'store/seed';
 import type {
   Delivery,
@@ -73,6 +85,7 @@ const Stock = () => {
     updateInventoryItem,
     deleteInventoryItem,
   } = useStore();
+  const confirmAction = useConfirm();
 
   const canManageInventory = can('manageInventory');
   const canManageVendors = can('manageVendors');
@@ -84,40 +97,91 @@ const Stock = () => {
   const [form, setForm] = useState<StockForm | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const [deliveryVendorId, setDeliveryVendorId] = useState('');
-  const [deliveryItemId, setDeliveryItemId] = useState('');
-  const [deliveryItemName, setDeliveryItemName] = useState('');
-  const [deliveryDate, setDeliveryDate] = useState(dateKey());
-  const [deliveryQuantity, setDeliveryQuantity] = useState('1');
-  const [deliveryCost, setDeliveryCost] = useState('0');
-  const [deliveryPaid, setDeliveryPaid] = useState('0');
-  const [deliveryPayBy, setDeliveryPayBy] = useState('');
-  const [deliveryInvoice, setDeliveryInvoice] = useState('');
+  const deliveryForm = useForm<DeliveryValues>({
+    resolver: zodResolver(deliverySchema),
+    defaultValues: {
+      vendorId: '',
+      date: dateKey(),
+      item: '',
+      inventoryItemId: '',
+      quantity: '1',
+      cost: '0',
+      amountPaid: '0',
+      payByDate: '',
+      invoice: '',
+    },
+  });
+  const countForm = useForm<StockCountValues>({
+    resolver: zodResolver(stockCountSchema),
+    defaultValues: {
+      itemId: '',
+      date: dateKey(),
+      counted: '0',
+    },
+  });
+  const lossForm = useForm<LossValues>({
+    resolver: zodResolver(lossSchema),
+    defaultValues: {
+      itemId: '',
+      type: 'Loss',
+      date: dateKey(),
+      quantity: '1',
+      reason: '',
+    },
+  });
+  const itemForm = useForm<InventoryItemValues>({
+    resolver: zodResolver(inventoryItemSchema),
+    defaultValues: {
+      name: '',
+      category: 'Restaurant',
+      unit: '',
+      openingStock: '0',
+      cost: '0',
+      reorderLevel: '0',
+      targetLevel: '0',
+    },
+  });
 
-  const [countItemId, setCountItemId] = useState('');
-  const [countDate, setCountDate] = useState(dateKey());
-  const [countPrevious, setCountPrevious] = useState(0);
-  const [countCounted, setCountCounted] = useState('0');
-
-  const [lossItemId, setLossItemId] = useState('');
-  const [lossDate, setLossDate] = useState(dateKey());
-  const [lossType, setLossType] = useState<'Loss' | 'Gain'>('Loss');
-  const [lossQuantity, setLossQuantity] = useState('1');
-  const [lossReason, setLossReason] = useState('');
-
-  const [itemName, setItemName] = useState('');
-  const [itemCategory, setItemCategory] = useState<Department>('Restaurant');
-  const [itemUnit, setItemUnit] = useState('');
-  const [itemOpening, setItemOpening] = useState('0');
-  const [itemCost, setItemCost] = useState('0');
-  const [itemReorder, setItemReorder] = useState('0');
-  const [itemTarget, setItemTarget] = useState('0');
+  const syncedDeliveryItemId = useRef<string | null>(null);
+  const syncedCountItemId = useRef<string | null>(null);
+  const countPreviousRef = useRef(0);
 
   const levels = useMemo(() => stockLevels(data), [data]);
   const itemById = useMemo(
     () => new Map(data.inventory.map((item) => [item.id, item] as const)),
     [data.inventory],
   );
+
+  const watchedDeliveryItemId = deliveryForm.watch('inventoryItemId');
+  const [deliveryQuantity, deliveryCost, deliveryPaid] = deliveryForm.watch([
+    'quantity',
+    'cost',
+    'amountPaid',
+  ]);
+  const watchedCountItemId = countForm.watch('itemId');
+  const countCounted = countForm.watch('counted');
+  const watchedLossItemId = lossForm.watch('itemId');
+  const lossQuantity = lossForm.watch('quantity');
+
+  useEffect(() => {
+    if (syncedDeliveryItemId.current === watchedDeliveryItemId) {
+      return;
+    }
+    syncedDeliveryItemId.current = watchedDeliveryItemId;
+    const item = itemById.get(watchedDeliveryItemId);
+    deliveryForm.setValue('item', item?.name ?? '');
+    deliveryForm.setValue('cost', String(item?.cost ?? 0));
+  }, [deliveryForm, itemById, watchedDeliveryItemId]);
+
+  useEffect(() => {
+    if (syncedCountItemId.current === watchedCountItemId) {
+      return;
+    }
+    syncedCountItemId.current = watchedCountItemId;
+    const previous = watchedCountItemId ? levels[watchedCountItemId] ?? 0 : 0;
+    countPreviousRef.current = previous;
+    countForm.setValue('counted', String(previous));
+  }, [countForm, levels, watchedCountItemId]);
 
   const vendorOptions = [
     { key: '', label: 'Select vendor' },
@@ -221,22 +285,24 @@ const Stock = () => {
   const deliveryTotal = roundMoney(
     (Number(deliveryQuantity) || 0) * (Number(deliveryCost) || 0),
   );
-  const deliveryPaidAmount = Math.max(0, Number(deliveryPaid) || 0);
-  const deliveryBalance = Math.max(
-    0,
-    roundMoney(deliveryTotal - deliveryPaidAmount),
+  const deliveryPaidAmount = Math.min(
+    deliveryTotal,
+    Math.max(0, Number(deliveryPaid) || 0),
   );
+  const deliveryBalance = roundMoney(deliveryTotal - deliveryPaidAmount);
 
+  const livePrevious = watchedCountItemId ? levels[watchedCountItemId] ?? 0 : 0;
+  const previousLevel = editingId ? countPreviousRef.current : livePrevious;
   const countDifference = roundMoney(
-    (Number(countCounted) || 0) - countPrevious,
+    (Number(countCounted) || 0) - previousLevel,
   );
   const countValue = roundMoney(
-    countDifference * (itemById.get(countItemId)?.cost ?? 0),
+    countDifference * (itemById.get(watchedCountItemId)?.cost ?? 0),
   );
 
   const lossQuantityValue = Number(lossQuantity) || 0;
   const lossValue = roundMoney(
-    lossQuantityValue * (itemById.get(lossItemId)?.cost ?? 0),
+    lossQuantityValue * (itemById.get(watchedLossItemId)?.cost ?? 0),
   );
 
   const vendorName = (vendorId: string) =>
@@ -261,16 +327,20 @@ const Stock = () => {
   const startDelivery = (itemId?: string, suggested?: number) => {
     const item =
       (itemId ? itemById.get(itemId) : undefined) ?? data.inventory[0];
+    const selectedItemId = item?.id ?? '';
 
-    setDeliveryVendorId(data.vendors[0]?.id ?? '');
-    setDeliveryItemId(item?.id ?? '');
-    setDeliveryItemName(item?.name ?? '');
-    setDeliveryDate(dateKey());
-    setDeliveryQuantity(String(suggested ?? 1));
-    setDeliveryCost(String(item?.cost ?? 0));
-    setDeliveryPaid('0');
-    setDeliveryPayBy('');
-    setDeliveryInvoice('');
+    syncedDeliveryItemId.current = selectedItemId;
+    deliveryForm.reset({
+      vendorId: data.vendors[0]?.id ?? '',
+      date: dateKey(),
+      item: item?.name ?? '',
+      inventoryItemId: selectedItemId,
+      quantity: String(suggested ?? 1),
+      cost: String(item?.cost ?? 0),
+      amountPaid: '0',
+      payByDate: '',
+      invoice: '',
+    });
     setEditingId(null);
     setForm('delivery');
   };
@@ -279,11 +349,15 @@ const Stock = () => {
     const item =
       (itemId ? itemById.get(itemId) : undefined) ?? data.inventory[0];
     const previous = item ? levels[item.id] ?? 0 : 0;
+    const selectedItemId = item?.id ?? '';
 
-    setCountItemId(item?.id ?? '');
-    setCountDate(dateKey());
-    setCountPrevious(previous);
-    setCountCounted(String(previous));
+    syncedCountItemId.current = selectedItemId;
+    countPreviousRef.current = previous;
+    countForm.reset({
+      itemId: selectedItemId,
+      date: dateKey(),
+      counted: String(previous),
+    });
     setEditingId(null);
     setForm('count');
   };
@@ -292,77 +366,76 @@ const Stock = () => {
     const item =
       (itemId ? itemById.get(itemId) : undefined) ?? data.inventory[0];
 
-    setLossItemId(item?.id ?? '');
-    setLossDate(dateKey());
-    setLossType('Loss');
-    setLossQuantity('1');
-    setLossReason('');
+    lossForm.reset({
+      itemId: item?.id ?? '',
+      type: 'Loss',
+      date: dateKey(),
+      quantity: '1',
+      reason: '',
+    });
     setEditingId(null);
     setForm('loss');
   };
 
   const startItem = (item?: InventoryItem) => {
-    setItemName(item?.name ?? '');
-    setItemCategory(item?.category ?? 'Restaurant');
-    setItemUnit(item?.unit ?? '');
-    setItemOpening(String(item?.openingStock ?? 0));
-    setItemCost(String(item?.cost ?? 0));
-    setItemReorder(String(item?.reorderLevel ?? 0));
-    setItemTarget(String(item?.targetLevel ?? 0));
+    itemForm.reset({
+      name: item?.name ?? '',
+      category: item?.category ?? 'Restaurant',
+      unit: item?.unit ?? '',
+      openingStock: String(item?.openingStock ?? 0),
+      cost: String(item?.cost ?? 0),
+      reorderLevel: String(item?.reorderLevel ?? 0),
+      targetLevel: String(item?.targetLevel ?? 0),
+    });
     setEditingId(item?.id ?? null);
     setForm('item');
   };
 
   const editDelivery = (record: Delivery) => {
-    setDeliveryVendorId(record.vendorId);
-    setDeliveryItemId(record.inventoryItemId ?? '');
-    setDeliveryItemName(record.item);
-    setDeliveryDate(record.date);
-    setDeliveryQuantity(String(record.quantity));
-    setDeliveryCost(String(record.cost));
-    setDeliveryPaid(String(record.amountPaid));
-    setDeliveryPayBy(record.payByDate ?? '');
-    setDeliveryInvoice(record.invoice);
+    const selectedItemId = record.inventoryItemId ?? '';
+
+    syncedDeliveryItemId.current = selectedItemId;
+    deliveryForm.reset({
+      vendorId: record.vendorId,
+      date: record.date,
+      item: itemById.get(selectedItemId)?.name ?? record.item,
+      inventoryItemId: selectedItemId,
+      quantity: String(record.quantity),
+      cost: String(record.cost),
+      amountPaid: String(record.amountPaid),
+      payByDate: record.payByDate ?? '',
+      invoice: record.invoice,
+    });
     setEditingId(record.id);
     setForm('delivery');
   };
 
   const editCount = (record: StockCount) => {
-    setCountItemId(record.itemId);
-    setCountDate(record.date);
-    setCountPrevious(record.previous);
-    setCountCounted(String(record.counted));
+    syncedCountItemId.current = record.itemId;
+    countPreviousRef.current = record.previous;
+    countForm.reset({
+      itemId: record.itemId,
+      date: record.date,
+      counted: String(record.counted),
+    });
     setEditingId(record.id);
     setForm('count');
   };
 
   const editLoss = (record: LossRecord) => {
-    setLossItemId(record.itemId);
-    setLossDate(record.date);
-    setLossType(record.type);
-    setLossQuantity(String(record.quantity));
-    setLossReason(record.reason);
+    lossForm.reset({
+      itemId: record.itemId,
+      type: record.type,
+      date: record.date,
+      quantity: String(record.quantity),
+      reason: record.reason,
+    });
     setEditingId(record.id);
     setForm('loss');
   };
 
-  const handleDeliveryItemChange = (id: string) => {
-    const item = itemById.get(id);
-    setDeliveryItemId(id);
-    setDeliveryItemName(item?.name ?? '');
-    setDeliveryCost(String(item?.cost ?? 0));
-  };
-
-  const handleCountItemChange = (id: string) => {
-    const item = itemById.get(id);
-    const previous = item ? levels[item.id] ?? 0 : 0;
-    setCountItemId(id);
-    setCountPrevious(previous);
-    setCountCounted(String(previous));
-  };
-
-  const removeDelivery = (id: string) => {
-    if (!window.confirm('Delete this delivery?')) {
+  const removeDelivery = async (id: string) => {
+    if (!(await confirmAction('Delete this delivery?'))) {
       return;
     }
     deleteDelivery(id);
@@ -371,8 +444,8 @@ const Stock = () => {
     }
   };
 
-  const removeCount = (id: string) => {
-    if (!window.confirm('Delete this stock count?')) {
+  const removeCount = async (id: string) => {
+    if (!(await confirmAction('Delete this stock count?'))) {
       return;
     }
     deleteStockCount(id);
@@ -381,8 +454,8 @@ const Stock = () => {
     }
   };
 
-  const removeLoss = (id: string) => {
-    if (!window.confirm('Delete this loss record?')) {
+  const removeLoss = async (id: string) => {
+    if (!(await confirmAction('Delete this loss record?'))) {
       return;
     }
     deleteLoss(id);
@@ -391,8 +464,8 @@ const Stock = () => {
     }
   };
 
-  const removeItem = (id: string) => {
-    if (!window.confirm('Delete this inventory item?')) {
+  const removeItem = async (id: string) => {
+    if (!(await confirmAction('Delete this inventory item?'))) {
       return;
     }
     deleteInventoryItem(id);
@@ -401,22 +474,25 @@ const Stock = () => {
     }
   };
 
-  const submitDelivery = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!canManageVendors || !deliveryVendorId || !deliveryItemId) {
+  const submitDelivery = (values: DeliveryValues) => {
+    if (!canManageVendors) {
       return;
     }
 
+    const quantity = Number(values.quantity);
+    const cost = Number(values.cost);
+    const paid = Number(values.amountPaid);
+
     const input = {
-      vendorId: deliveryVendorId,
-      date: deliveryDate || dateKey(),
-      item: itemById.get(deliveryItemId)?.name ?? deliveryItemName,
-      inventoryItemId: deliveryItemId,
-      quantity: Math.max(0, Number(deliveryQuantity) || 0),
-      cost: Math.max(0, Number(deliveryCost) || 0),
-      amountPaid: Math.max(0, Number(deliveryPaid) || 0),
-      payByDate: deliveryPayBy || undefined,
-      invoice: deliveryInvoice.trim(),
+      vendorId: values.vendorId,
+      date: values.date || dateKey(),
+      item: itemById.get(values.inventoryItemId)?.name ?? values.item,
+      inventoryItemId: values.inventoryItemId,
+      quantity: roundMoney(quantity),
+      cost: roundMoney(cost),
+      amountPaid: roundMoney(paid),
+      payByDate: values.payByDate || undefined,
+      invoice: values.invoice.trim(),
     };
 
     if (editingId) {
@@ -427,20 +503,25 @@ const Stock = () => {
     clearForm();
   };
 
-  const submitCount = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!canManageInventory || !countItemId) {
+  const submitCount = (values: StockCountValues) => {
+    if (!canManageInventory) {
       return;
     }
 
+    const counted = Number(values.counted);
+    const previous = editingId
+      ? countPreviousRef.current
+      : levels[values.itemId] ?? 0;
+    const difference = roundMoney(counted - previous);
+
     const input = {
-      date: countDate || dateKey(),
-      itemId: countItemId,
-      itemName: itemById.get(countItemId)?.name ?? '',
-      previous: countPrevious,
-      counted: Number(countCounted) || 0,
-      difference: countDifference,
-      value: countValue,
+      date: values.date || dateKey(),
+      itemId: values.itemId,
+      itemName: itemById.get(values.itemId)?.name ?? '',
+      previous,
+      counted: roundMoney(counted),
+      difference,
+      value: roundMoney(difference * (itemById.get(values.itemId)?.cost ?? 0)),
     };
 
     if (editingId) {
@@ -451,20 +532,23 @@ const Stock = () => {
     clearForm();
   };
 
-  const submitLoss = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!canManageInventory || !lossItemId) {
+  const submitLoss = (values: LossValues) => {
+    if (!canManageInventory) {
       return;
     }
 
+    const quantityValue = Number(values.quantity);
+
     const input = {
-      date: lossDate || dateKey(),
-      itemId: lossItemId,
-      itemName: itemById.get(lossItemId)?.name ?? '',
-      quantity: Math.max(0, lossQuantityValue),
-      type: lossType,
-      reason: lossReason.trim(),
-      value: lossValue,
+      date: values.date || dateKey(),
+      itemId: values.itemId,
+      itemName: itemById.get(values.itemId)?.name ?? '',
+      quantity: roundMoney(quantityValue),
+      type: values.type,
+      reason: values.reason.trim(),
+      value: roundMoney(
+        quantityValue * (itemById.get(values.itemId)?.cost ?? 0),
+      ),
     };
 
     if (editingId) {
@@ -475,20 +559,24 @@ const Stock = () => {
     clearForm();
   };
 
-  const submitItem = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!canManageInventory || !itemName.trim() || !itemUnit.trim()) {
+  const submitItem = (values: InventoryItemValues) => {
+    if (!canManageInventory) {
       return;
     }
 
+    const opening = Number(values.openingStock);
+    const cost = Number(values.cost);
+    const reorder = Number(values.reorderLevel);
+    const target = Number(values.targetLevel);
+
     const input = {
-      name: itemName.trim(),
-      category: itemCategory,
-      unit: itemUnit.trim(),
-      openingStock: Number(itemOpening) || 0,
-      cost: Math.max(0, Number(itemCost) || 0),
-      reorderLevel: Math.max(0, Number(itemReorder) || 0),
-      targetLevel: Math.max(0, Number(itemTarget) || 0),
+      name: values.name.trim(),
+      category: values.category,
+      unit: values.unit.trim(),
+      openingStock: roundMoney(opening),
+      cost: roundMoney(cost),
+      reorderLevel: roundMoney(reorder),
+      targetLevel: roundMoney(target),
     };
 
     if (editingId) {
@@ -499,6 +587,11 @@ const Stock = () => {
     clearForm();
   };
 
+  const { errors: itemErrors } = itemForm.formState;
+  const { errors: deliveryErrors } = deliveryForm.formState;
+  const { errors: countErrors } = countForm.formState;
+  const { errors: lossErrors } = lossForm.formState;
+
   const itemSidePanel =
     form === 'item' && canManageInventory ? (
       <SidePanel
@@ -507,71 +600,75 @@ const Stock = () => {
         subtitle="Set the units and stock thresholds used across the app."
         title={editingId ? 'Edit inventory item' : 'Add inventory item'}
       >
-        <form className="admin-form" onSubmit={submitItem}>
+        <form
+          className="admin-form"
+          onSubmit={itemForm.handleSubmit(submitItem)}
+        >
           <div className="field-grid">
-            <Field label="Name">
+            <Field error={itemErrors.name?.message} label="Name">
               <AppInput
                 aria-label="Name"
                 isRequired
-                onChange={(event) => setItemName(event.target.value)}
                 type="text"
-                value={itemName}
+                {...itemForm.register('name')}
               />
             </Field>
-            <Field label="Category">
-              <AppSelect
-                aria-label="Category"
-                onValueChange={(value) => setItemCategory(value as Department)}
+            <Field error={itemErrors.category?.message} label="Category">
+              <FormSelect
+                control={itemForm.control}
+                label="Category"
+                name="category"
                 options={DEPARTMENT_OPTIONS}
-                value={itemCategory}
               />
             </Field>
-            <Field label="Unit">
+            <Field error={itemErrors.unit?.message} label="Unit">
               <AppInput
                 aria-label="Unit"
                 isRequired
-                onChange={(event) => setItemUnit(event.target.value)}
                 type="text"
-                value={itemUnit}
+                {...itemForm.register('unit')}
               />
             </Field>
-            <Field label="Opening stock">
+            <Field
+              error={itemErrors.openingStock?.message}
+              label="Opening stock"
+            >
               <AppInput
                 aria-label="Opening stock"
-                onChange={(event) => setItemOpening(event.target.value)}
+                min="0"
                 step="0.01"
                 type="number"
-                value={itemOpening}
+                {...itemForm.register('openingStock')}
               />
             </Field>
-            <Field label="Cost">
+            <Field error={itemErrors.cost?.message} label="Cost">
               <AppInput
                 aria-label="Cost"
                 min="0"
-                onChange={(event) => setItemCost(event.target.value)}
                 step="0.01"
                 type="number"
-                value={itemCost}
+                {...itemForm.register('cost')}
               />
             </Field>
-            <Field label="Reorder level">
+            <Field
+              error={itemErrors.reorderLevel?.message}
+              label="Reorder level"
+            >
               <AppInput
                 aria-label="Reorder level"
                 min="0"
-                onChange={(event) => setItemReorder(event.target.value)}
                 step="0.01"
                 type="number"
-                value={itemReorder}
+                {...itemForm.register('reorderLevel')}
               />
             </Field>
-            <Field label="Target level">
+            <Field error={itemErrors.targetLevel?.message} label="Target level">
               <AppInput
                 aria-label="Target level"
                 min="0"
-                onChange={(event) => setItemTarget(event.target.value)}
                 step="0.01"
                 type="number"
-                value={itemTarget}
+                {...itemForm.register('targetLevel')}
               />
             </Field>
           </div>
@@ -858,81 +955,91 @@ const Stock = () => {
           title={editingId ? 'Edit delivery' : 'Record delivery'}
           subtitle="Unpaid amounts are added to the vendor balance."
         >
-          <form className="admin-form" onSubmit={submitDelivery}>
+          <form
+            className="admin-form"
+            onSubmit={deliveryForm.handleSubmit(submitDelivery)}
+          >
             <div className="field-grid">
-              <Field label="Vendor">
-                <AppSelect
-                  aria-label="Vendor"
+              <Field error={deliveryErrors.vendorId?.message} label="Vendor">
+                <FormSelect
+                  control={deliveryForm.control}
                   isRequired
-                  onValueChange={setDeliveryVendorId}
+                  label="Vendor"
+                  name="vendorId"
                   options={vendorOptions}
                   placeholder="Select vendor"
-                  value={deliveryVendorId}
-                />
-              </Field>
-              <Field label="Inventory item">
-                <AppSelect
-                  aria-label="Inventory item"
-                  isRequired
-                  onValueChange={handleDeliveryItemChange}
-                  options={inventoryOptions}
-                  placeholder="Select item"
-                  value={deliveryItemId}
-                />
-              </Field>
-              <Field label="Date">
-                <AppDatePicker
-                  aria-label="Date"
-                  onValueChange={setDeliveryDate}
-                  value={deliveryDate}
-                />
-              </Field>
-              <Field label="Quantity">
-                <AppInput
-                  aria-label="Quantity"
-                  min="0"
-                  onChange={(event) => setDeliveryQuantity(event.target.value)}
-                  step="0.01"
-                  type="number"
-                  value={deliveryQuantity}
-                />
-              </Field>
-              <Field label="Unit cost">
-                <AppInput
-                  aria-label="Unit cost"
-                  min="0"
-                  onChange={(event) => setDeliveryCost(event.target.value)}
-                  step="0.01"
-                  type="number"
-                  value={deliveryCost}
                 />
               </Field>
               <Field
-                label="Amount paid now"
+                error={deliveryErrors.item?.message}
+                label="Inventory item"
+              >
+                <FormSelect
+                  control={deliveryForm.control}
+                  isRequired
+                  label="Inventory item"
+                  name="inventoryItemId"
+                  options={inventoryOptions}
+                  placeholder="Select item"
+                />
+              </Field>
+              <Field error={deliveryErrors.date?.message} label="Date">
+                <FormDatePicker
+                  control={deliveryForm.control}
+                  label="Date"
+                  name="date"
+                />
+              </Field>
+              <Field error={deliveryErrors.quantity?.message} label="Quantity">
+                <AppInput
+                  aria-label="Quantity"
+                  isRequired
+                  min="0.01"
+                  step="0.01"
+                  type="number"
+                  {...deliveryForm.register('quantity')}
+                />
+              </Field>
+              <Field error={deliveryErrors.cost?.message} label="Unit cost">
+                <AppInput
+                  aria-label="Unit cost"
+                  isRequired
+                  min="0"
+                  step="0.01"
+                  type="number"
+                  {...deliveryForm.register('cost')}
+                />
+              </Field>
+              <Field
+                error={deliveryErrors.amountPaid?.message}
                 hint="Enter 0 to put the full total on the vendor's account."
+                label="Amount paid now"
               >
                 <AppInput
                   aria-label="Amount paid now"
+                  isRequired
                   min="0"
-                  onChange={(event) => setDeliveryPaid(event.target.value)}
                   step="0.01"
                   type="number"
-                  value={deliveryPaid}
+                  {...deliveryForm.register('amountPaid')}
                 />
               </Field>
-              <Field label="Pay-by date" hint="Optional">
-                <AppDatePicker
-                  aria-label="Pay-by date"
-                  onValueChange={setDeliveryPayBy}
-                  value={deliveryPayBy}
+              <Field
+                error={deliveryErrors.payByDate?.message}
+                hint="Optional"
+                label="Pay-by date"
+              >
+                <FormDatePicker
+                  control={deliveryForm.control}
+                  label="Pay-by date"
+                  name="payByDate"
                 />
               </Field>
-              <Field label="Invoice">
+              <Field error={deliveryErrors.invoice?.message} label="Invoice">
                 <AppInput
                   aria-label="Invoice"
-                  onChange={(event) => setDeliveryInvoice(event.target.value)}
                   type="text"
-                  value={deliveryInvoice}
+                  {...deliveryForm.register('invoice')}
                 />
               </Field>
             </div>
@@ -960,23 +1067,26 @@ const Stock = () => {
           title={editingId ? 'Edit stock count' : 'Record stock count'}
           subtitle="Differences adjust the on-hand level immediately."
         >
-          <form className="admin-form" onSubmit={submitCount}>
+          <form
+            className="admin-form"
+            onSubmit={countForm.handleSubmit(submitCount)}
+          >
             <div className="field-grid">
-              <Field label="Item">
-                <AppSelect
-                  aria-label="Item"
+              <Field error={countErrors.itemId?.message} label="Item">
+                <FormSelect
+                  control={countForm.control}
                   isRequired
-                  onValueChange={handleCountItemChange}
+                  label="Item"
+                  name="itemId"
                   options={inventoryOptions}
                   placeholder="Select item"
-                  value={countItemId}
                 />
               </Field>
-              <Field label="Date">
-                <AppDatePicker
-                  aria-label="Date"
-                  onValueChange={setCountDate}
-                  value={countDate}
+              <Field error={countErrors.date?.message} label="Date">
+                <FormDatePicker
+                  control={countForm.control}
+                  label="Date"
+                  name="date"
                 />
               </Field>
               <Field
@@ -987,16 +1097,20 @@ const Stock = () => {
                   aria-label="Previous level"
                   isReadOnly
                   type="number"
-                  value={String(countPrevious)}
+                  value={String(previousLevel)}
                 />
               </Field>
-              <Field label="Counted quantity">
+              <Field
+                error={countErrors.counted?.message}
+                label="Counted quantity"
+              >
                 <AppInput
                   aria-label="Counted quantity"
-                  onChange={(event) => setCountCounted(event.target.value)}
+                  isRequired
+                  min="0"
                   step="0.01"
                   type="number"
-                  value={countCounted}
+                  {...countForm.register('counted')}
                 />
               </Field>
             </div>
@@ -1024,51 +1138,52 @@ const Stock = () => {
           title={editingId ? 'Edit loss record' : 'Record loss or gain'}
           subtitle="Adjust stock for spoilage, breakage or corrections."
         >
-          <form className="admin-form" onSubmit={submitLoss}>
+          <form
+            className="admin-form"
+            onSubmit={lossForm.handleSubmit(submitLoss)}
+          >
             <div className="field-grid">
-              <Field label="Item">
-                <AppSelect
-                  aria-label="Item"
+              <Field error={lossErrors.itemId?.message} label="Item">
+                <FormSelect
+                  control={lossForm.control}
                   isRequired
-                  onValueChange={setLossItemId}
+                  label="Item"
+                  name="itemId"
                   options={inventoryOptions}
                   placeholder="Select item"
-                  value={lossItemId}
                 />
               </Field>
               <Field label="Type">
-                <AppSelect
-                  aria-label="Type"
-                  onValueChange={(value) =>
-                    setLossType(value as 'Loss' | 'Gain')
-                  }
+                <FormSelect
+                  control={lossForm.control}
+                  label="Type"
+                  name="type"
                   options={LOSS_TYPE_OPTIONS}
-                  value={lossType}
                 />
               </Field>
-              <Field label="Date">
-                <AppDatePicker
-                  aria-label="Date"
-                  onValueChange={setLossDate}
-                  value={lossDate}
+              <Field error={lossErrors.date?.message} label="Date">
+                <FormDatePicker
+                  control={lossForm.control}
+                  label="Date"
+                  name="date"
                 />
               </Field>
-              <Field label="Quantity">
+              <Field error={lossErrors.quantity?.message} label="Quantity">
                 <AppInput
                   aria-label="Quantity"
-                  min="0"
-                  onChange={(event) => setLossQuantity(event.target.value)}
+                  isRequired
+                  min="0.01"
                   step="0.01"
                   type="number"
-                  value={lossQuantity}
+                  {...lossForm.register('quantity')}
                 />
               </Field>
-              <Field label="Reason">
+              <Field error={lossErrors.reason?.message} label="Reason">
                 <AppInput
                   aria-label="Reason"
-                  onChange={(event) => setLossReason(event.target.value)}
+                  isRequired
                   type="text"
-                  value={lossReason}
+                  {...lossForm.register('reason')}
                 />
               </Field>
             </div>

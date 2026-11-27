@@ -1,21 +1,25 @@
 import { useMemo, useState } from 'react';
-import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
 
 import { DashboardLayout } from 'layouts';
 import {
   AppDatePicker,
   AppInput,
-  AppSelect,
   Field,
   FormActions,
+  FormDatePicker,
+  FormSelect,
   PageHeader,
   Panel,
   RecordTable,
   Tabs,
 } from 'components';
 import type { TabItem, TableColumn } from 'components';
-import { useStore } from 'context';
+import { useConfirm, useStore } from 'context';
+import { historyEditSchema } from 'schemas/forms';
+import type { HistoryEditValues } from 'schemas/forms';
 import type {
   DayClose,
   DebtPayment,
@@ -41,33 +45,12 @@ type HistoryTab =
   | 'stockCounts'
   | 'dayCloses';
 
-type EditForm =
-  | {
-      type: 'sales';
-      id: string;
-      date: string;
-      amountPaid: string;
-      status: OrderStatus;
-    }
-  | {
-      type: 'debtPayments';
-      id: string;
-      date: string;
-      amount: string;
-      method: PayMethod;
-      reference: string;
-    }
-  | {
-      type: 'expenses';
-      id: string;
-      date: string;
-      category: string;
-      description: string;
-      amount: string;
-      method: PayMethod;
-    };
+type EditableType = 'sales' | 'debtPayments' | 'expenses';
 
-type EditableType = EditForm['type'];
+type EditForm = {
+  type: EditableType;
+  id: string;
+};
 
 const EDIT_LABELS: Record<EditableType, string> = {
   sales: 'sale',
@@ -169,6 +152,7 @@ const History = () => {
     updateExpense,
     updateSale,
   } = useStore();
+  const confirmAction = useConfirm();
   const navigate = useNavigate();
 
   const staffId = currentUser?.id;
@@ -181,6 +165,16 @@ const History = () => {
   const [query, setQuery] = useState('');
   const [date, setDate] = useState('');
   const [editForm, setEditForm] = useState<EditForm | null>(null);
+
+  const {
+    control,
+    handleSubmit,
+    register,
+    reset,
+    formState: { errors },
+  } = useForm<HistoryEditValues>({
+    resolver: zodResolver(historyEditSchema),
+  });
 
   const activeTab: HistoryTab =
     isCashier && !CASHIER_TABS.includes(selectedTab) ? 'sales' : selectedTab;
@@ -232,13 +226,18 @@ const History = () => {
     if (type === 'sales') {
       const record = data.sales.find((entry) => entry.id === id);
       if (record) {
-        setEditForm({
-          type,
-          id,
+        reset({
+          kind: 'sale',
           date: record.date,
           amountPaid: String(record.amountPaid),
           status: record.status,
+          amount: undefined,
+          method: undefined,
+          reference: undefined,
+          category: undefined,
+          description: undefined,
         });
+        setEditForm({ type, id });
       }
       return;
     }
@@ -246,40 +245,49 @@ const History = () => {
     if (type === 'debtPayments') {
       const record = data.debtPayments.find((entry) => entry.id === id);
       if (record) {
-        setEditForm({
-          type,
-          id,
+        reset({
+          kind: 'debtPayment',
           date: record.date,
+          amountPaid: undefined,
+          status: undefined,
           amount: String(record.amount),
           method: record.method,
           reference: record.reference,
+          category: undefined,
+          description: undefined,
         });
+        setEditForm({ type, id });
       }
       return;
     }
 
     const record = data.expenses.find((entry) => entry.id === id);
     if (record) {
-      setEditForm({
-        type,
-        id,
+      reset({
+        kind: 'expense',
         date: record.date,
-        category: record.category,
-        description: record.description,
+        amountPaid: undefined,
+        status: undefined,
         amount: String(record.amount),
         method: record.method,
+        reference: undefined,
+        category: record.category,
+        description: record.description,
       });
+      setEditForm({ type, id });
     }
   };
 
-  const handleDelete = (type: EditableType, id: string) => {
+  const handleDelete = async (type: EditableType, id: string) => {
     if (!canManage) {
       return;
     }
 
     const label = EDIT_LABELS[type];
 
-    if (!window.confirm(`Delete this ${label}? This cannot be undone.`)) {
+    if (
+      !(await confirmAction(`Delete this ${label}? This cannot be undone.`))
+    ) {
       return;
     }
 
@@ -575,36 +583,47 @@ const History = () => {
     },
   ];
 
-  const handleEditSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleEditSubmit = async (values: HistoryEditValues) => {
     if (!editForm || !canManage) {
       return;
     }
 
-    if (editForm.type === 'sales') {
+    if (values.kind === 'sale' && values.status === 'Refunded') {
+      if (
+        !(await confirmAction(`Mark sale ${editForm.id} as refunded?`, {
+          title: 'Refund sale?',
+          confirmLabel: 'Mark refunded',
+        }))
+      ) {
+        return;
+      }
+    }
+
+    if (values.kind === 'sale') {
       updateSale(editForm.id, {
-        date: editForm.date,
-        amountPaid: parseMoney(editForm.amountPaid),
-        status: editForm.status,
+        date: values.date,
+        amountPaid: parseMoney(values.amountPaid ?? ''),
+        status: values.status ?? 'Paid',
       });
-    } else if (editForm.type === 'debtPayments') {
+    } else if (values.kind === 'debtPayment') {
       updateDebtPayment(editForm.id, {
-        date: editForm.date,
-        amount: parseMoney(editForm.amount),
-        method: editForm.method,
-        reference: editForm.reference.trim(),
+        date: values.date,
+        amount: parseMoney(values.amount ?? ''),
+        method: values.method ?? 'Cash',
+        reference: values.reference?.trim() ?? '',
       });
     } else {
       updateExpense(editForm.id, {
-        date: editForm.date,
-        category: editForm.category.trim(),
-        description: editForm.description.trim(),
-        amount: parseMoney(editForm.amount),
-        method: editForm.method,
+        date: values.date,
+        category: values.category?.trim() ?? '',
+        description: values.description?.trim() ?? '',
+        amount: parseMoney(values.amount ?? ''),
+        method: values.method ?? 'Cash',
       });
     }
 
     setEditForm(null);
+    reset();
   };
 
   const renderTable = () => {
@@ -751,54 +770,40 @@ const History = () => {
             subtitle="Correct the selected record, then save your changes."
             title="Edit record"
           >
-            <form className="admin-form" onSubmit={handleEditSubmit}>
+            <form
+              className="admin-form"
+              onSubmit={handleSubmit(handleEditSubmit)}
+            >
               <div className="field-grid">
-                <Field label="Date">
-                  <AppDatePicker
-                    aria-label="Record date"
+                <Field label="Date" error={errors.date?.message}>
+                  <FormDatePicker
+                    control={control}
                     isRequired
-                    value={editForm.date}
-                    onValueChange={(value) =>
-                      setEditForm((current) =>
-                        current ? { ...current, date: value } : current,
-                      )
-                    }
+                    label="Record date"
+                    name="date"
                   />
                 </Field>
 
                 {editForm.type === 'sales' && (
                   <>
-                    <Field label="Amount paid">
+                    <Field
+                      label="Amount paid"
+                      error={errors.amountPaid?.message}
+                    >
                       <AppInput
                         aria-label="Sale amount paid"
                         min="0"
-                        onChange={(event) =>
-                          setEditForm((current) =>
-                            current?.type === 'sales'
-                              ? { ...current, amountPaid: event.target.value }
-                              : current,
-                          )
-                        }
                         step="0.01"
                         type="number"
-                        value={editForm.amountPaid}
+                        {...register('amountPaid')}
                       />
                     </Field>
-                    <Field label="Status">
-                      <AppSelect
-                        aria-label="Sale status"
+                    <Field label="Status" error={errors.status?.message}>
+                      <FormSelect
+                        control={control}
+                        label="Sale status"
+                        name="status"
                         options={ORDER_STATUS_OPTIONS}
-                        value={editForm.status}
-                        onValueChange={(value) =>
-                          setEditForm((current) =>
-                            current?.type === 'sales'
-                              ? {
-                                  ...current,
-                                  status: value as OrderStatus,
-                                }
-                              : current,
-                          )
-                        }
                       />
                     </Field>
                   </>
@@ -806,51 +811,28 @@ const History = () => {
 
                 {editForm.type === 'debtPayments' && (
                   <>
-                    <Field label="Amount">
+                    <Field label="Amount" error={errors.amount?.message}>
                       <AppInput
                         aria-label="Debt payment amount"
                         min="0.01"
-                        onChange={(event) =>
-                          setEditForm((current) =>
-                            current?.type === 'debtPayments'
-                              ? { ...current, amount: event.target.value }
-                              : current,
-                          )
-                        }
                         step="0.01"
                         type="number"
-                        value={editForm.amount}
+                        {...register('amount')}
                       />
                     </Field>
-                    <Field label="Method">
-                      <AppSelect
-                        aria-label="Debt payment method"
+                    <Field label="Method" error={errors.method?.message}>
+                      <FormSelect
+                        control={control}
+                        label="Debt payment method"
+                        name="method"
                         options={PAY_METHOD_OPTIONS}
-                        value={editForm.method}
-                        onValueChange={(value) =>
-                          setEditForm((current) =>
-                            current?.type === 'debtPayments'
-                              ? {
-                                  ...current,
-                                  method: value as PayMethod,
-                                }
-                              : current,
-                          )
-                        }
                       />
                     </Field>
-                    <Field label="Reference">
+                    <Field label="Reference" error={errors.reference?.message}>
                       <AppInput
                         aria-label="Debt payment reference"
-                        onChange={(event) =>
-                          setEditForm((current) =>
-                            current?.type === 'debtPayments'
-                              ? { ...current, reference: event.target.value }
-                              : current,
-                          )
-                        }
                         type="text"
-                        value={editForm.reference}
+                        {...register('reference')}
                       />
                     </Field>
                   </>
@@ -858,65 +840,38 @@ const History = () => {
 
                 {editForm.type === 'expenses' && (
                   <>
-                    <Field label="Category">
+                    <Field label="Category" error={errors.category?.message}>
                       <AppInput
                         aria-label="Expense category"
-                        onChange={(event) =>
-                          setEditForm((current) =>
-                            current?.type === 'expenses'
-                              ? { ...current, category: event.target.value }
-                              : current,
-                          )
-                        }
                         type="text"
-                        value={editForm.category}
+                        {...register('category')}
                       />
                     </Field>
-                    <Field label="Description">
+                    <Field
+                      label="Description"
+                      error={errors.description?.message}
+                    >
                       <AppInput
                         aria-label="Expense description"
-                        onChange={(event) =>
-                          setEditForm((current) =>
-                            current?.type === 'expenses'
-                              ? { ...current, description: event.target.value }
-                              : current,
-                          )
-                        }
                         type="text"
-                        value={editForm.description}
+                        {...register('description')}
                       />
                     </Field>
-                    <Field label="Amount">
+                    <Field label="Amount" error={errors.amount?.message}>
                       <AppInput
                         aria-label="Expense amount"
                         min="0.01"
-                        onChange={(event) =>
-                          setEditForm((current) =>
-                            current?.type === 'expenses'
-                              ? { ...current, amount: event.target.value }
-                              : current,
-                          )
-                        }
                         step="0.01"
                         type="number"
-                        value={editForm.amount}
+                        {...register('amount')}
                       />
                     </Field>
-                    <Field label="Method">
-                      <AppSelect
-                        aria-label="Expense method"
+                    <Field label="Method" error={errors.method?.message}>
+                      <FormSelect
+                        control={control}
+                        label="Expense method"
+                        name="method"
                         options={PAY_METHOD_OPTIONS}
-                        value={editForm.method}
-                        onValueChange={(value) =>
-                          setEditForm((current) =>
-                            current?.type === 'expenses'
-                              ? {
-                                  ...current,
-                                  method: value as PayMethod,
-                                }
-                              : current,
-                          )
-                        }
                       />
                     </Field>
                   </>
@@ -924,7 +879,10 @@ const History = () => {
               </div>
 
               <FormActions
-                onSecondary={() => setEditForm(null)}
+                onSecondary={() => {
+                  setEditForm(null);
+                  reset();
+                }}
                 secondaryLabel="Cancel"
                 submitLabel="Save changes"
               />

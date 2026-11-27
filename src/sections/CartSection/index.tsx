@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { useOrder, useStore } from 'context';
+import { useConfirm, useOrder, useStore } from 'context';
 import { formatNaira } from 'utils/format';
 import type { Tender } from 'types/store';
 import {
@@ -36,6 +36,8 @@ const CartSection = () => {
     subtotal,
     vat,
     total,
+    maxQuantityFor,
+    canPlaceOrder,
     setQuantity,
     removeItem,
     setTender,
@@ -44,10 +46,36 @@ const CartSection = () => {
     startNewOrder,
   } = useOrder();
   const { data } = useStore();
+  const confirmAction = useConfirm();
   const navigate = useNavigate();
+
+  const stockBlocked = lines.length > 0 && !canPlaceOrder;
+
+  const chargeLabel = () => {
+    if (stockBlocked) {
+      return 'Insufficient stock';
+    }
+    if (tender === 'Credit') {
+      return 'Charge to debt';
+    }
+    return `Charge ${formatNaira(total)}`;
+  };
 
   const handleCharge = () => {
     placeOrder();
+  };
+
+  const handleStartNewOrder = async () => {
+    if (
+      !(await confirmAction('Start a new order and clear this ticket?', {
+        title: 'Start new order?',
+        confirmLabel: 'Start new order',
+        tone: 'primary',
+      }))
+    ) {
+      return;
+    }
+    startNewOrder();
   };
 
   return (
@@ -92,7 +120,7 @@ const CartSection = () => {
             </button>
             <button
               className="primary-button"
-              onClick={startNewOrder}
+              onClick={handleStartNewOrder}
               type="button"
             >
               Start new order
@@ -111,50 +139,57 @@ const CartSection = () => {
                 <p>Tap a dish on the menu to start building this order.</p>
               </div>
             ) : (
-              lines.map((line) => (
-                <div className="ticket-line" key={line.id}>
-                  <div>
-                    <div className="ticket-line__name">{line.name}</div>
-                    <div className="ticket-line__unit">
-                      {formatNaira(line.price)} each
-                    </div>
-                    <div className="ticket-line__actions">
-                      <div className="qty-stepper">
+              lines.map((line) => {
+                const maxQuantity = maxQuantityFor(line.id);
+
+                return (
+                  <div className="ticket-line" key={line.id}>
+                    <div>
+                      <div className="ticket-line__name">{line.name}</div>
+                      <div className="ticket-line__unit">
+                        {formatNaira(line.price)} each
+                        {maxQuantity !== Infinity &&
+                          ` · ${maxQuantity} available`}
+                      </div>
+                      <div className="ticket-line__actions">
+                        <div className="qty-stepper">
+                          <button
+                            aria-label={`Remove one ${line.name}`}
+                            onClick={() =>
+                              setQuantity(line.id, line.quantity - 1)
+                            }
+                            type="button"
+                          >
+                            <MinusIcon />
+                          </button>
+                          <span>{line.quantity}</span>
+                          <button
+                            aria-label={`Add one ${line.name}`}
+                            disabled={line.quantity >= maxQuantity}
+                            onClick={() =>
+                              setQuantity(line.id, line.quantity + 1)
+                            }
+                            type="button"
+                          >
+                            <PlusIcon />
+                          </button>
+                        </div>
                         <button
-                          aria-label={`Remove one ${line.name}`}
-                          onClick={() =>
-                            setQuantity(line.id, line.quantity - 1)
-                          }
+                          aria-label={`Remove ${line.name}`}
+                          className="ticket-remove"
+                          onClick={() => removeItem(line.id)}
                           type="button"
                         >
-                          <MinusIcon />
-                        </button>
-                        <span>{line.quantity}</span>
-                        <button
-                          aria-label={`Add one ${line.name}`}
-                          onClick={() =>
-                            setQuantity(line.id, line.quantity + 1)
-                          }
-                          type="button"
-                        >
-                          <PlusIcon />
+                          <TrashIcon />
                         </button>
                       </div>
-                      <button
-                        aria-label={`Remove ${line.name}`}
-                        className="ticket-remove"
-                        onClick={() => removeItem(line.id)}
-                        type="button"
-                      >
-                        <TrashIcon />
-                      </button>
+                    </div>
+                    <div className="ticket-line__total">
+                      {formatNaira(line.price * line.quantity)}
                     </div>
                   </div>
-                  <div className="ticket-line__total">
-                    {formatNaira(line.price * line.quantity)}
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
 
@@ -207,15 +242,11 @@ const CartSection = () => {
 
             <button
               className="charge-button"
-              disabled={
-                lines.length === 0 || (tender === 'Credit' && !customerId)
-              }
+              disabled={!canPlaceOrder || (tender === 'Credit' && !customerId)}
               onClick={handleCharge}
               type="button"
             >
-              {tender === 'Credit'
-                ? 'Charge to debt'
-                : `Charge ${formatNaira(total)}`}
+              {chargeLabel()}
             </button>
           </div>
         </>

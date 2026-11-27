@@ -6,10 +6,10 @@ import {
   Routes,
 } from 'react-router-dom';
 import { NextUIProvider } from '@nextui-org/react';
-import { ThemeProvider as NextThemesProvider } from 'next-themes';
 
 import {
   AuthProvider,
+  ConfirmProvider,
   OrderProvider,
   PrintProvider,
   StoreProvider,
@@ -184,22 +184,22 @@ const AppRoutes = () => {
 const App = () => {
   return (
     <NextUIProvider>
-      <NextThemesProvider attribute="class" defaultTheme="dark">
-        <main className="dark text-foreground bg-background app-root">
-          <StoreProvider>
-            <OrderProvider>
-              <AuthProvider>
+      <main className="dark text-foreground bg-background app-root">
+        <StoreProvider>
+          <OrderProvider>
+            <AuthProvider>
+              <ConfirmProvider>
                 <PrintProvider>
                   <Router>
                     <IdleLock />
                     <AppRoutes />
                   </Router>
                 </PrintProvider>
-              </AuthProvider>
-            </OrderProvider>
-          </StoreProvider>
-        </main>
-      </NextThemesProvider>
+              </ConfirmProvider>
+            </AuthProvider>
+          </OrderProvider>
+        </StoreProvider>
+      </main>
     </NextUIProvider>
   );
 };

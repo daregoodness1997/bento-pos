@@ -2,7 +2,7 @@ import { memo, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { DashboardLayout } from 'layouts';
-import { AppInput, PageHeader, SearchIcon } from 'components';
+import { AppInput, PageHeader, RecordTable, SearchIcon } from 'components';
 import { useOrder, useStore } from 'context';
 import { formatNaira } from 'utils/format';
 
@@ -72,51 +72,45 @@ const Sales = () => {
         </div>
       </div>
 
-      <div className="table-wrap">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Ticket</th>
-              <th>Time</th>
-              <th>Channel</th>
-              <th>Items</th>
-              <th>Total</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {visibleOrders.map((order) => (
-              <tr key={order.id}>
-                <td>
-                  <button
-                    className="ticket-link"
-                    onClick={() => handleView(order.id)}
-                    type="button"
-                  >
-                    {order.id}
-                  </button>
-                </td>
-                <td className="tabular">{order.time}</td>
-                <td>{order.channel}</td>
-                <td>{order.items}</td>
-                <td className="tabular">{formatNaira(order.total)}</td>
-                <td>
-                  <span className="status-pill" data-status={order.status}>
-                    {order.status}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {visibleOrders.length === 0 && (
-          <div className="ticket-empty">
-            <strong>No matching orders</strong>
-            <p>Try another ticket number, channel, or status.</p>
-          </div>
-        )}
-      </div>
+      <RecordTable
+        columns={[
+          {
+            key: 'ticket',
+            label: 'Ticket',
+            render: (order) => (
+              <button
+                className="ticket-link"
+                onClick={() => handleView(order.id)}
+                type="button"
+              >
+                {order.id}
+              </button>
+            ),
+          },
+          { key: 'time', label: 'Time' },
+          { key: 'channel', label: 'Channel' },
+          { key: 'items', label: 'Items' },
+          {
+            key: 'total',
+            label: 'Total',
+            align: 'right',
+            render: (order) => formatNaira(order.total),
+          },
+          {
+            key: 'status',
+            label: 'Status',
+            render: (order) => (
+              <span className="status-pill" data-status={order.status}>
+                {order.status}
+              </span>
+            ),
+          },
+        ]}
+        emptyMessage="Try another ticket number, channel, or status."
+        emptyTitle="No matching orders"
+        getKey={(order) => order.id}
+        rows={visibleOrders}
+      />
     </DashboardLayout>
   );
 };

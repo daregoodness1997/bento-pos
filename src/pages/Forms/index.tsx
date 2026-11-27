@@ -1,22 +1,48 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useFieldArray, useForm } from 'react-hook-form';
 
 import { DashboardLayout } from 'layouts';
-import { useStore } from 'context';
+import { useConfirm, useStore } from 'context';
 import type { Permission } from 'context';
 import {
-  AppDatePicker,
   AppInput,
   AppSelect,
   AppTextarea,
   EmptyState,
   Field,
   FormActions,
+  FormDatePicker,
+  FormSelect,
   PageHeader,
   Panel,
   RecordTable,
   Tabs,
 } from 'components';
 import type { TableColumn } from 'components';
+import {
+  customerSchema,
+  dayCloseSchema,
+  debtPaymentSchema,
+  deliverySchema,
+  expenseSchema,
+  lossSchema,
+  saleSchema,
+  stockCountSchema,
+  vendorPaymentSchema,
+} from 'schemas/forms';
+import type {
+  CustomerValues,
+  DayCloseValues,
+  DebtPaymentValues,
+  DeliveryValues,
+  ExpenseValues,
+  LossValues,
+  SaleLineValues,
+  SaleValues,
+  StockCountValues,
+  VendorPaymentValues,
+} from 'schemas/forms';
 import { formatNaira } from 'utils/format';
 import { dateKey } from 'store/seed';
 import {
@@ -183,11 +209,12 @@ const LOSS_TYPE_OPTIONS = [
 ];
 const MAX_SALE_LINES = 6;
 
-const currentClock = () =>
-  new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-const makeLineKey = () =>
-  `line-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+const currentClock = () => {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, '0')}:${String(
+    now.getMinutes(),
+  ).padStart(2, '0')}`;
+};
 
 const toNumber = (value: string) => {
   const parsed = Number(value);
@@ -209,52 +236,22 @@ const unitCostFor = (item: MenuItem, inventory: InventoryItem[]) =>
     }, 0),
   );
 
-interface SaleLineDraft extends OrderLine {
-  key: string;
-}
+const describeSaleLine = (
+  line: SaleLineValues,
+  menu: MenuItem[],
+  inventory: InventoryItem[],
+): OrderLine => {
+  const item = menu.find((entry) => entry.id === line.menuItemId);
+  return {
+    itemId: line.menuItemId,
+    name: item?.name ?? line.menuItemId,
+    quantity: Math.max(1, Math.floor(toNumber(line.quantity))),
+    unitPrice: item?.price ?? 0,
+    cost: item ? unitCostFor(item, inventory) : 0,
+  };
+};
 
-interface FormState {
-  department: Department;
-  orderType: OrderType;
-  tender: Tender;
-  customerId: string;
-  date: string;
-  time: string;
-  lines: SaleLineDraft[];
-  debtCustomerId: string;
-  debtSaleId: string;
-  debtAmount: string;
-  debtMethod: PayMethod;
-  debtReference: string;
-  deliveryVendorId: string;
-  deliveryInventoryItemId: string;
-  itemName: string;
-  quantity: string;
-  unitCost: string;
-  amountPaid: string;
-  payByDate: string;
-  invoice: string;
-  vendorPaymentVendorId: string;
-  vendorPaymentAmount: string;
-  vendorPaymentMethod: PayMethod;
-  vendorPaymentReference: string;
-  expenseCategory: string;
-  expenseDescription: string;
-  expenseAmount: string;
-  expenseMethod: PayMethod;
-  lossItemId: string;
-  lossType: 'Loss' | 'Gain';
-  lossQuantity: string;
-  lossReason: string;
-  stockItemId: string;
-  countedQuantity: string;
-  countedCash: string;
-  closeNote: string;
-  customerName: string;
-  customerPhone: string;
-}
-
-const makeInitialForm = (): FormState => ({
+const makeSaleDefaults = (): SaleValues => ({
   department: 'Restaurant',
   orderType: 'Dine in',
   tender: 'Cash',
@@ -262,38 +259,66 @@ const makeInitialForm = (): FormState => ({
   date: dateKey(),
   time: currentClock(),
   lines: [],
-  debtCustomerId: '',
-  debtSaleId: '',
-  debtAmount: '',
-  debtMethod: 'Cash',
-  debtReference: '',
-  deliveryVendorId: '',
-  deliveryInventoryItemId: '',
-  itemName: '',
+});
+
+const makeDebtDefaults = (): DebtPaymentValues => ({
+  customerId: '',
+  saleId: '',
+  amount: '',
+  method: 'Cash',
+  reference: '',
+  date: dateKey(),
+});
+
+const makeDeliveryDefaults = (): DeliveryValues => ({
+  vendorId: '',
+  date: dateKey(),
+  item: '',
+  inventoryItemId: '',
   quantity: '1',
-  unitCost: '',
+  cost: '',
   amountPaid: '0',
   payByDate: '',
   invoice: '',
-  vendorPaymentVendorId: '',
-  vendorPaymentAmount: '',
-  vendorPaymentMethod: 'Cash',
-  vendorPaymentReference: '',
-  expenseCategory: 'General',
-  expenseDescription: '',
-  expenseAmount: '',
-  expenseMethod: 'Cash',
-  lossItemId: '',
-  lossType: 'Loss',
-  lossQuantity: '1',
-  lossReason: '',
-  stockItemId: '',
-  countedQuantity: '',
-  countedCash: '',
-  closeNote: '',
-  customerName: '',
-  customerPhone: '',
 });
+
+const makeVendorPaymentDefaults = (): VendorPaymentValues => ({
+  vendorId: '',
+  date: dateKey(),
+  amount: '',
+  method: 'Cash',
+  reference: '',
+});
+
+const makeExpenseDefaults = (): ExpenseValues => ({
+  category: 'General',
+  description: '',
+  amount: '',
+  method: 'Cash',
+  date: dateKey(),
+});
+
+const makeLossDefaults = (): LossValues => ({
+  itemId: '',
+  type: 'Loss',
+  date: dateKey(),
+  quantity: '1',
+  reason: '',
+});
+
+const makeStockCountDefaults = (): StockCountValues => ({
+  itemId: '',
+  date: dateKey(),
+  counted: '',
+});
+
+const makeDayCloseDefaults = (): DayCloseValues => ({
+  date: dateKey(),
+  countedCash: '',
+  note: '',
+});
+
+const makeCustomerDefaults = (): CustomerValues => ({ name: '', phone: '' });
 
 interface EditingState {
   tab: TabId;
@@ -354,13 +379,74 @@ const Forms = () => {
     updateCustomer,
     deleteCustomer,
   } = useStore();
+  const confirmAction = useConfirm();
+
+  const saleForm = useForm<SaleValues>({
+    resolver: zodResolver(saleSchema),
+    defaultValues: makeSaleDefaults(),
+  });
+  const debtForm = useForm<DebtPaymentValues>({
+    resolver: zodResolver(debtPaymentSchema),
+    defaultValues: makeDebtDefaults(),
+  });
+  const deliveryForm = useForm<DeliveryValues>({
+    resolver: zodResolver(deliverySchema),
+    defaultValues: makeDeliveryDefaults(),
+  });
+  const vendorPaymentForm = useForm<VendorPaymentValues>({
+    resolver: zodResolver(vendorPaymentSchema),
+    defaultValues: makeVendorPaymentDefaults(),
+  });
+  const expenseForm = useForm<ExpenseValues>({
+    resolver: zodResolver(expenseSchema),
+    defaultValues: makeExpenseDefaults(),
+  });
+  const lossForm = useForm<LossValues>({
+    resolver: zodResolver(lossSchema),
+    defaultValues: makeLossDefaults(),
+  });
+  const stockCountForm = useForm<StockCountValues>({
+    resolver: zodResolver(stockCountSchema),
+    defaultValues: makeStockCountDefaults(),
+  });
+  const dayCloseForm = useForm<DayCloseValues>({
+    resolver: zodResolver(dayCloseSchema),
+    defaultValues: makeDayCloseDefaults(),
+  });
+  const customerForm = useForm<CustomerValues>({
+    resolver: zodResolver(customerSchema),
+    defaultValues: makeCustomerDefaults(),
+  });
+
+  const {
+    fields: saleLineFields,
+    append: appendSaleLine,
+    update: updateSaleLineField,
+    remove: removeSaleLineField,
+  } = useFieldArray({ control: saleForm.control, name: 'lines' });
 
   const [activeTab, setActiveTab] = useState<TabId>('sale');
-  const [form, setForm] = useState<FormState>(makeInitialForm);
   const [editing, setEditing] = useState<EditingState | null>(null);
   const [message, setMessage] = useState('');
   const [menuSelection, setMenuSelection] = useState('');
   const [menuQuantity, setMenuQuantity] = useState('1');
+
+  const saleErrors = saleForm.formState.errors;
+  const debtErrors = debtForm.formState.errors;
+  const deliveryErrors = deliveryForm.formState.errors;
+  const vendorPaymentErrors = vendorPaymentForm.formState.errors;
+  const expenseErrors = expenseForm.formState.errors;
+  const lossErrors = lossForm.formState.errors;
+  const stockCountErrors = stockCountForm.formState.errors;
+  const dayCloseErrors = dayCloseForm.formState.errors;
+  const customerErrors = customerForm.formState.errors;
+
+  const saleValues = saleForm.watch();
+  const debtValues = debtForm.watch();
+  const deliveryValues = deliveryForm.watch();
+  const lossValues = lossForm.watch();
+  const stockCountValues = stockCountForm.watch();
+  const dayCloseValues = dayCloseForm.watch();
 
   const readOnly = currentUser?.role === 'Auditor';
   const isCashier = Boolean(currentUser && currentUser.role === 'Cashier');
@@ -374,9 +460,6 @@ const Forms = () => {
     [data.sales, data.debtPayments],
   );
 
-  const patchForm = (patch: Partial<FormState>) =>
-    setForm((current) => ({ ...current, ...patch }));
-
   const isOwnStaff = (staffId: string) =>
     !isCashier || staffId === currentUser?.id;
 
@@ -384,54 +467,61 @@ const Forms = () => {
   const selectedPortions = selectedMenuItem
     ? availablePortions(selectedMenuItem, levels)
     : Infinity;
+  const saleLineDetails = saleValues.lines.map((line) =>
+    describeSaleLine(line, data.menu, data.inventory),
+  );
   const saleSubtotal = roundMoney(
-    form.lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0),
+    saleLineDetails.reduce(
+      (sum, line) => sum + line.unitPrice * line.quantity,
+      0,
+    ),
   );
   const saleVat = data.settings.vatEnabled
     ? roundMoney(saleSubtotal * data.settings.vatRate)
     : 0;
   const saleTotal = roundMoney(saleSubtotal + saleVat);
   const deliveryTotal = roundMoney(
-    toNumber(form.quantity) * toNumber(form.unitCost),
+    toNumber(deliveryValues.quantity) * toNumber(deliveryValues.cost),
   );
-  const deliveryPaid = roundMoney(toNumber(form.amountPaid));
+  const deliveryPaid = roundMoney(toNumber(deliveryValues.amountPaid));
   const deliveryDebt = roundMoney(Math.max(0, deliveryTotal - deliveryPaid));
   const selectedLossItem = data.inventory.find(
-    (item) => item.id === form.lossItemId,
+    (item) => item.id === lossValues.itemId,
   );
   const lossValue = roundMoney(
-    toNumber(form.lossQuantity) * (selectedLossItem?.cost ?? 0),
+    toNumber(lossValues.quantity) * (selectedLossItem?.cost ?? 0),
   );
   const selectedCountItem = data.inventory.find(
-    (item) => item.id === form.stockItemId,
+    (item) => item.id === stockCountValues.itemId,
   );
-  const currentLevel = levels[form.stockItemId] ?? 0;
+  const currentLevel = levels[stockCountValues.itemId] ?? 0;
   const previousLevel = useMemo(() => {
     if (editing?.tab === 'stockCount') {
       const existing = data.stockCounts.find(
-        (count) => count.id === editing.id && count.itemId === form.stockItemId,
+        (count) =>
+          count.id === editing.id && count.itemId === stockCountValues.itemId,
       );
       if (existing) {
         return roundMoney(currentLevel - existing.difference);
       }
     }
     return roundMoney(currentLevel);
-  }, [currentLevel, data.stockCounts, editing, form.stockItemId]);
-  const countedQuantity = toNumber(form.countedQuantity);
+  }, [currentLevel, data.stockCounts, editing, stockCountValues.itemId]);
+  const countedQuantity = toNumber(stockCountValues.counted);
   const countDifference = roundMoney(countedQuantity - previousLevel);
   const countValue = roundMoney(
     countDifference * (selectedCountItem?.cost ?? 0),
   );
-  const { expectedCash } = dailyReport(data, form.date, cashierId);
-  const countedCash = toNumber(form.countedCash);
+  const { expectedCash } = dailyReport(data, dayCloseValues.date, cashierId);
+  const countedCash = toNumber(dayCloseValues.countedCash);
   const closeDifference = roundMoney(countedCash - expectedCash);
   const creditRowsForDebt = creditRows.filter(
     (row) =>
       isOwnStaff(row.sale.staffId) &&
-      (!form.debtCustomerId || row.sale.customerId === form.debtCustomerId),
+      (!debtValues.customerId || row.sale.customerId === debtValues.customerId),
   );
   const selectedCreditRow = creditRows.find(
-    (row) => row.sale.id === form.debtSaleId,
+    (row) => row.sale.id === debtValues.saleId,
   );
   const salePortionHint = (() => {
     if (!selectedMenuItem) {
@@ -559,8 +649,42 @@ const Forms = () => {
       ? true
       : isOwnStaff(row.record.staffId);
 
+  const resetFormFor = (tab: TabId) => {
+    switch (tab) {
+      case 'sale':
+        saleForm.reset(makeSaleDefaults());
+        break;
+      case 'debt':
+        debtForm.reset(makeDebtDefaults());
+        break;
+      case 'delivery':
+        deliveryForm.reset(makeDeliveryDefaults());
+        break;
+      case 'vendorPayment':
+        vendorPaymentForm.reset(makeVendorPaymentDefaults());
+        break;
+      case 'expense':
+        expenseForm.reset(makeExpenseDefaults());
+        break;
+      case 'loss':
+        lossForm.reset(makeLossDefaults());
+        break;
+      case 'stockCount':
+        stockCountForm.reset(makeStockCountDefaults());
+        break;
+      case 'dayClose':
+        dayCloseForm.reset(makeDayCloseDefaults());
+        break;
+      case 'customer':
+        customerForm.reset(makeCustomerDefaults());
+        break;
+      default:
+        break;
+    }
+  };
+
   const resetForm = () => {
-    setForm(makeInitialForm());
+    resetFormFor(activeTab);
     setEditing(null);
     setMenuSelection('');
     setMenuQuantity('1');
@@ -570,7 +694,7 @@ const Forms = () => {
   const handleTabChange = (id: string) => {
     const nextTab = id as TabId;
     setActiveTab(nextTab);
-    setForm(makeInitialForm());
+    resetFormFor(nextTab);
     setEditing(null);
     setMenuSelection('');
     setMenuQuantity('1');
@@ -580,7 +704,7 @@ const Forms = () => {
   const saveAndReset = (text: string) => {
     setMessage(text);
     setEditing(null);
-    setForm(makeInitialForm());
+    resetFormFor(activeTab);
     setMenuSelection('');
     setMenuQuantity('1');
   };
@@ -596,338 +720,281 @@ const Forms = () => {
       setMessage('Enter a quantity of at least one.');
       return;
     }
-    if (form.lines.length >= MAX_SALE_LINES) {
+    const lines = saleForm.getValues('lines');
+    if (lines.length >= MAX_SALE_LINES) {
       setMessage(`A sale can include up to ${MAX_SALE_LINES} lines.`);
       return;
     }
-    const alreadyAdded = form.lines
-      .filter((line) => line.itemId === item.id)
-      .reduce((sum, line) => sum + line.quantity, 0);
+    const alreadyAdded = lines
+      .filter((line) => line.menuItemId === item.id)
+      .reduce((sum, line) => sum + toNumber(line.quantity), 0);
     const portions = availablePortions(item, levels);
     if (Number.isFinite(portions) && alreadyAdded + quantity > portions) {
       setMessage(`Only ${portions} portion(s) of ${item.name} are available.`);
       return;
     }
-    setForm((current) => ({
-      ...current,
-      lines: [
-        ...current.lines,
-        {
-          key: makeLineKey(),
-          itemId: item.id,
-          name: item.name,
-          quantity,
-          unitPrice: item.price,
-          cost: unitCostFor(item, data.inventory),
-        },
-      ],
-    }));
+    appendSaleLine({ menuItemId: item.id, quantity: String(quantity) });
     setMenuSelection('');
     setMenuQuantity('1');
     setMessage('');
   };
 
-  const updateSaleLine = (key: string, value: string) => {
-    const line = form.lines.find((entry) => entry.key === key);
+  const updateSaleLine = (index: number, value: string) => {
+    const line = saleForm.getValues(`lines.${index}`);
     if (!line) {
       return;
     }
     const requested = Math.max(1, Math.floor(toNumber(value)));
-    const item = data.menu.find((entry) => entry.id === line.itemId);
+    const item = data.menu.find((entry) => entry.id === line.menuItemId);
     const portions = item ? availablePortions(item, levels) : Infinity;
-    const otherQuantity = form.lines
-      .filter((entry) => entry.key !== key && entry.itemId === line.itemId)
-      .reduce((sum, entry) => sum + entry.quantity, 0);
+    const otherQuantity = saleForm
+      .getValues('lines')
+      .filter(
+        (entry, entryIndex) =>
+          entryIndex !== index && entry.menuItemId === line.menuItemId,
+      )
+      .reduce((sum, entry) => sum + toNumber(entry.quantity), 0);
     const maximum = Number.isFinite(portions)
       ? Math.max(1, portions - otherQuantity)
       : requested;
     const quantity = Math.min(requested, maximum);
     setMessage(
       quantity < requested
-        ? `Only ${maximum} portion(s) of ${line.name} are available.`
+        ? `Only ${maximum} portion(s) of ${item?.name ?? line.menuItemId} are available.`
         : '',
     );
-    setForm((current) => ({
-      ...current,
-      lines: current.lines.map((entry) =>
-        entry.key === key ? { ...entry, quantity } : entry,
-      ),
-    }));
+    updateSaleLineField(index, { ...line, quantity: String(quantity) });
   };
 
-  const removeSaleLine = (key: string) => {
-    setForm((current) => ({
-      ...current,
-      lines: current.lines.filter((line) => line.key !== key),
-    }));
+  const removeSaleLine = (index: number) => {
+    removeSaleLineField(index);
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const onValidSale = (values: SaleValues) => {
     if (!canUse) {
       return;
     }
 
-    const date = form.date || dateKey();
+    const date = values.date || dateKey();
     const staffId = currentUser?.id;
-
-    switch (activeTab) {
-      case 'sale': {
-        if (form.lines.length === 0) {
-          setMessage('Add at least one menu line.');
-          return;
-        }
-        if (form.tender === 'Credit' && !form.customerId) {
-          setMessage('Choose a customer for credit sales.');
-          return;
-        }
-        const lines: OrderLine[] = form.lines.map((line) => ({
-          itemId: line.itemId,
-          name: line.name,
-          quantity: line.quantity,
-          unitPrice: line.unitPrice,
-          cost: line.cost,
-        }));
-        const time = form.time || currentClock();
-        if (editing?.tab === 'sale') {
-          updateSale(editing.id, {
-            date,
-            time,
-            department: form.department,
-            orderType: form.orderType,
-            tender: form.tender,
-            customerId: form.tender === 'Credit' ? form.customerId : undefined,
-            lines,
-          });
-        } else {
-          recordSale({
-            date,
-            time,
-            department: form.department,
-            orderType: form.orderType,
-            tender: form.tender,
-            customerId: form.tender === 'Credit' ? form.customerId : undefined,
-            lines,
-            staffId,
-          });
-        }
-        saveAndReset(editing ? 'Sale updated.' : 'Sale recorded.');
-        return;
-      }
-      case 'debt': {
-        const amount = roundMoney(toNumber(form.debtAmount));
-        if (!form.debtCustomerId) {
-          setMessage('Choose a customer.');
-          return;
-        }
-        if (amount <= 0) {
-          setMessage('Enter an amount greater than zero.');
-          return;
-        }
-        const payment = {
-          customerId: form.debtCustomerId,
-          saleId: form.debtSaleId || undefined,
-          date,
-          amount,
-          method: form.debtMethod,
-          reference: form.debtReference,
-        };
-        if (editing?.tab === 'debt') {
-          updateDebtPayment(editing.id, payment);
-        } else {
-          addDebtPayment({ ...payment, staffId });
-        }
-        saveAndReset(
-          editing ? 'Debt payment updated.' : 'Debt payment recorded.',
-        );
-        return;
-      }
-      case 'delivery': {
-        if (!form.deliveryVendorId) {
-          setMessage('Choose a vendor.');
-          return;
-        }
-        if (!form.itemName.trim()) {
-          setMessage('Enter an item name.');
-          return;
-        }
-        if (deliveryTotal <= 0) {
-          setMessage('Enter a quantity and unit cost.');
-          return;
-        }
-        const delivery = {
-          vendorId: form.deliveryVendorId,
-          date,
-          item: form.itemName.trim(),
-          inventoryItemId: form.deliveryInventoryItemId || undefined,
-          quantity: toNumber(form.quantity),
-          cost: toNumber(form.unitCost),
-          amountPaid: deliveryPaid,
-          payByDate: form.payByDate || undefined,
-          invoice: form.invoice,
-        };
-        if (editing?.tab === 'delivery') {
-          updateDelivery(editing.id, delivery);
-        } else {
-          addDelivery({ ...delivery, staffId });
-        }
-        saveAndReset(editing ? 'Delivery updated.' : 'Delivery recorded.');
-        return;
-      }
-      case 'vendorPayment': {
-        const amount = roundMoney(toNumber(form.vendorPaymentAmount));
-        if (!form.vendorPaymentVendorId) {
-          setMessage('Choose a vendor.');
-          return;
-        }
-        if (amount <= 0) {
-          setMessage('Enter an amount greater than zero.');
-          return;
-        }
-        const payment = {
-          vendorId: form.vendorPaymentVendorId,
-          date,
-          amount,
-          method: form.vendorPaymentMethod,
-          reference: form.vendorPaymentReference,
-        };
-        if (editing?.tab === 'vendorPayment') {
-          updateVendorPayment(editing.id, payment);
-        } else {
-          addVendorPayment({ ...payment, staffId });
-        }
-        saveAndReset(
-          editing ? 'Vendor payment updated.' : 'Vendor payment recorded.',
-        );
-        return;
-      }
-      case 'expense': {
-        const amount = roundMoney(toNumber(form.expenseAmount));
-        if (!form.expenseDescription.trim()) {
-          setMessage('Enter a description.');
-          return;
-        }
-        if (amount <= 0) {
-          setMessage('Enter an amount greater than zero.');
-          return;
-        }
-        const expense = {
-          date,
-          category: form.expenseCategory,
-          description: form.expenseDescription.trim(),
-          amount,
-          method: form.expenseMethod,
-        };
-        if (editing?.tab === 'expense') {
-          updateExpense(editing.id, expense);
-        } else {
-          addExpense({ ...expense, staffId });
-        }
-        saveAndReset(editing ? 'Expense updated.' : 'Expense recorded.');
-        return;
-      }
-      case 'loss': {
-        if (!form.lossItemId) {
-          setMessage('Choose an inventory item.');
-          return;
-        }
-        if (toNumber(form.lossQuantity) <= 0) {
-          setMessage('Enter a quantity greater than zero.');
-          return;
-        }
-        if (!form.lossReason.trim()) {
-          setMessage('Enter a reason.');
-          return;
-        }
-        const loss = {
-          date,
-          itemId: form.lossItemId,
-          itemName: selectedLossItem?.name ?? form.itemName,
-          quantity: toNumber(form.lossQuantity),
-          type: form.lossType,
-          reason: form.lossReason.trim(),
-          value: lossValue,
-        };
-        if (editing?.tab === 'loss') {
-          updateLoss(editing.id, loss);
-        } else {
-          addLoss({ ...loss, staffId });
-        }
-        saveAndReset(
-          editing ? 'Stock movement updated.' : 'Stock movement recorded.',
-        );
-        return;
-      }
-      case 'stockCount': {
-        if (!form.stockItemId) {
-          setMessage('Choose an inventory item.');
-          return;
-        }
-        if (countedQuantity < 0 || form.countedQuantity === '') {
-          setMessage('Enter the counted quantity.');
-          return;
-        }
-        const count = {
-          date,
-          itemId: form.stockItemId,
-          itemName: selectedCountItem?.name ?? '',
-          previous: previousLevel,
-          counted: countedQuantity,
-          difference: countDifference,
-          value: countValue,
-        };
-        if (editing?.tab === 'stockCount') {
-          updateStockCount(editing.id, count);
-        } else {
-          addStockCount({ ...count, staffId });
-        }
-        saveAndReset(
-          editing ? 'Stock count updated.' : 'Stock count recorded.',
-        );
-        return;
-      }
-      case 'dayClose': {
-        if (form.countedCash === '' || countedCash < 0) {
-          setMessage('Enter the cash counted.');
-          return;
-        }
-        const close = {
-          date,
-          expectedCash,
-          countedCash,
-          difference: closeDifference,
-          note: form.closeNote,
-        };
-        if (editing?.tab === 'dayClose') {
-          updateDayClose(editing.id, close);
-        } else {
-          addDayClose({ ...close, staffId });
-        }
-        saveAndReset(editing ? 'Day close updated.' : 'Day close recorded.');
-        return;
-      }
-      case 'customer': {
-        if (!form.customerName.trim()) {
-          setMessage('Enter a customer name.');
-          return;
-        }
-        if (editing?.tab === 'customer') {
-          updateCustomer(editing.id, {
-            name: form.customerName.trim(),
-            phone: form.customerPhone,
-          });
-        } else {
-          addCustomer({
-            name: form.customerName.trim(),
-            phone: form.customerPhone,
-          });
-        }
-        saveAndReset(editing ? 'Customer updated.' : 'Customer added.');
-        break;
-      }
-      default:
-        break;
+    const lines = values.lines.map((line) =>
+      describeSaleLine(line, data.menu, data.inventory),
+    );
+    const time = values.time || currentClock();
+    if (editing?.tab === 'sale') {
+      updateSale(editing.id, {
+        date,
+        time,
+        department: values.department,
+        orderType: values.orderType,
+        tender: values.tender,
+        customerId: values.tender === 'Credit' ? values.customerId : undefined,
+        lines,
+      });
+    } else {
+      recordSale({
+        date,
+        time,
+        department: values.department,
+        orderType: values.orderType,
+        tender: values.tender,
+        customerId: values.tender === 'Credit' ? values.customerId : undefined,
+        lines,
+        staffId,
+      });
     }
+    saveAndReset(editing ? 'Sale updated.' : 'Sale recorded.');
+  };
+
+  const onValidDebt = (values: DebtPaymentValues) => {
+    if (!canUse) {
+      return;
+    }
+
+    const date = values.date || dateKey();
+    const staffId = currentUser?.id;
+    const amount = roundMoney(toNumber(values.amount));
+    const payment = {
+      customerId: values.customerId,
+      saleId: values.saleId || undefined,
+      date,
+      amount,
+      method: values.method,
+      reference: values.reference,
+    };
+    if (editing?.tab === 'debt') {
+      updateDebtPayment(editing.id, payment);
+    } else {
+      addDebtPayment({ ...payment, staffId });
+    }
+    saveAndReset(editing ? 'Debt payment updated.' : 'Debt payment recorded.');
+  };
+
+  const onValidDelivery = (values: DeliveryValues) => {
+    if (!canUse) {
+      return;
+    }
+
+    const date = values.date || dateKey();
+    const staffId = currentUser?.id;
+    const delivery = {
+      vendorId: values.vendorId,
+      date,
+      item: values.item.trim(),
+      inventoryItemId: values.inventoryItemId || undefined,
+      quantity: toNumber(values.quantity),
+      cost: toNumber(values.cost),
+      amountPaid: roundMoney(toNumber(values.amountPaid)),
+      payByDate: values.payByDate || undefined,
+      invoice: values.invoice,
+    };
+    if (editing?.tab === 'delivery') {
+      updateDelivery(editing.id, delivery);
+    } else {
+      addDelivery({ ...delivery, staffId });
+    }
+    saveAndReset(editing ? 'Delivery updated.' : 'Delivery recorded.');
+  };
+
+  const onValidVendorPayment = (values: VendorPaymentValues) => {
+    if (!canUse) {
+      return;
+    }
+
+    const date = values.date || dateKey();
+    const staffId = currentUser?.id;
+    const amount = roundMoney(toNumber(values.amount));
+    const payment = {
+      vendorId: values.vendorId,
+      date,
+      amount,
+      method: values.method,
+      reference: values.reference,
+    };
+    if (editing?.tab === 'vendorPayment') {
+      updateVendorPayment(editing.id, payment);
+    } else {
+      addVendorPayment({ ...payment, staffId });
+    }
+    saveAndReset(
+      editing ? 'Vendor payment updated.' : 'Vendor payment recorded.',
+    );
+  };
+
+  const onValidExpense = (values: ExpenseValues) => {
+    if (!canUse) {
+      return;
+    }
+
+    const date = values.date || dateKey();
+    const staffId = currentUser?.id;
+    const amount = roundMoney(toNumber(values.amount));
+    const expense = {
+      date,
+      category: values.category,
+      description: values.description.trim(),
+      amount,
+      method: values.method,
+    };
+    if (editing?.tab === 'expense') {
+      updateExpense(editing.id, expense);
+    } else {
+      addExpense({ ...expense, staffId });
+    }
+    saveAndReset(editing ? 'Expense updated.' : 'Expense recorded.');
+  };
+
+  const onValidLoss = (values: LossValues) => {
+    if (!canUse) {
+      return;
+    }
+
+    const date = values.date || dateKey();
+    const staffId = currentUser?.id;
+    const item = data.inventory.find((entry) => entry.id === values.itemId);
+    const loss = {
+      date,
+      itemId: values.itemId,
+      itemName: item?.name ?? values.itemId,
+      quantity: toNumber(values.quantity),
+      type: values.type,
+      reason: values.reason.trim(),
+      value: roundMoney(toNumber(values.quantity) * (item?.cost ?? 0)),
+    };
+    if (editing?.tab === 'loss') {
+      updateLoss(editing.id, loss);
+    } else {
+      addLoss({ ...loss, staffId });
+    }
+    saveAndReset(
+      editing ? 'Stock movement updated.' : 'Stock movement recorded.',
+    );
+  };
+
+  const onValidStockCount = (values: StockCountValues) => {
+    if (!canUse) {
+      return;
+    }
+
+    const date = values.date || dateKey();
+    const staffId = currentUser?.id;
+    const item = data.inventory.find((entry) => entry.id === values.itemId);
+    const count = {
+      date,
+      itemId: values.itemId,
+      itemName: item?.name ?? '',
+      previous: previousLevel,
+      counted: toNumber(values.counted),
+      difference: countDifference,
+      value: countValue,
+    };
+    if (editing?.tab === 'stockCount') {
+      updateStockCount(editing.id, count);
+    } else {
+      addStockCount({ ...count, staffId });
+    }
+    saveAndReset(editing ? 'Stock count updated.' : 'Stock count recorded.');
+  };
+
+  const onValidDayClose = (values: DayCloseValues) => {
+    if (!canUse) {
+      return;
+    }
+
+    const date = values.date || dateKey();
+    const staffId = currentUser?.id;
+    const close = {
+      date,
+      expectedCash,
+      countedCash: toNumber(values.countedCash),
+      difference: roundMoney(toNumber(values.countedCash) - expectedCash),
+      note: values.note,
+    };
+    if (editing?.tab === 'dayClose') {
+      updateDayClose(editing.id, close);
+    } else {
+      addDayClose({ ...close, staffId });
+    }
+    saveAndReset(editing ? 'Day close updated.' : 'Day close recorded.');
+  };
+
+  const onValidCustomer = (values: CustomerValues) => {
+    if (!canUse) {
+      return;
+    }
+
+    if (editing?.tab === 'customer') {
+      updateCustomer(editing.id, {
+        name: values.name.trim(),
+        phone: values.phone,
+      });
+    } else {
+      addCustomer({
+        name: values.name.trim(),
+        phone: values.phone,
+      });
+    }
+    saveAndReset(editing ? 'Customer updated.' : 'Customer added.');
   };
 
   const startEdit = (row: RecentRow) => {
@@ -935,46 +1002,41 @@ const Forms = () => {
       return;
     }
 
-    const nextForm = makeInitialForm();
     switch (row.kind) {
       case 'sale':
-        setForm({
-          ...nextForm,
+        saleForm.reset({
+          ...makeSaleDefaults(),
           department: row.record.department,
           orderType: row.record.orderType,
           tender: row.record.tender,
           customerId: row.record.customerId ?? '',
           date: row.record.date,
           time: row.record.time,
-          lines: row.record.lines.map((line, index) => ({
-            key: `${line.itemId ?? line.name}-${index}`,
-            itemId: line.itemId,
-            name: line.name,
-            quantity: line.quantity,
-            unitPrice: line.unitPrice,
-            cost: line.cost,
+          lines: row.record.lines.map((line) => ({
+            menuItemId: line.itemId ?? line.name,
+            quantity: String(line.quantity),
           })),
         });
         break;
       case 'debt':
-        setForm({
-          ...nextForm,
-          debtCustomerId: row.record.customerId,
-          debtSaleId: row.record.saleId ?? '',
-          debtAmount: String(row.record.amount),
-          debtMethod: row.record.method,
-          debtReference: row.record.reference,
+        debtForm.reset({
+          ...makeDebtDefaults(),
+          customerId: row.record.customerId,
+          saleId: row.record.saleId ?? '',
+          amount: String(row.record.amount),
+          method: row.record.method,
+          reference: row.record.reference,
           date: row.record.date,
         });
         break;
       case 'delivery':
-        setForm({
-          ...nextForm,
-          deliveryVendorId: row.record.vendorId,
-          deliveryInventoryItemId: row.record.inventoryItemId ?? '',
-          itemName: row.record.item,
+        deliveryForm.reset({
+          ...makeDeliveryDefaults(),
+          vendorId: row.record.vendorId,
+          inventoryItemId: row.record.inventoryItemId ?? '',
+          item: row.record.item,
           quantity: String(row.record.quantity),
-          unitCost: String(row.record.cost),
+          cost: String(row.record.cost),
           amountPaid: String(row.record.amountPaid),
           payByDate: row.record.payByDate ?? '',
           invoice: row.record.invoice,
@@ -982,56 +1044,56 @@ const Forms = () => {
         });
         break;
       case 'vendorPayment':
-        setForm({
-          ...nextForm,
-          vendorPaymentVendorId: row.record.vendorId,
-          vendorPaymentAmount: String(row.record.amount),
-          vendorPaymentMethod: row.record.method,
-          vendorPaymentReference: row.record.reference,
+        vendorPaymentForm.reset({
+          ...makeVendorPaymentDefaults(),
+          vendorId: row.record.vendorId,
+          amount: String(row.record.amount),
+          method: row.record.method,
+          reference: row.record.reference,
           date: row.record.date,
         });
         break;
       case 'expense':
-        setForm({
-          ...nextForm,
-          expenseCategory: row.record.category,
-          expenseDescription: row.record.description,
-          expenseAmount: String(row.record.amount),
-          expenseMethod: row.record.method,
+        expenseForm.reset({
+          ...makeExpenseDefaults(),
+          category: row.record.category,
+          description: row.record.description,
+          amount: String(row.record.amount),
+          method: row.record.method,
           date: row.record.date,
         });
         break;
       case 'loss':
-        setForm({
-          ...nextForm,
-          lossItemId: row.record.itemId,
-          lossType: row.record.type,
-          lossQuantity: String(row.record.quantity),
-          lossReason: row.record.reason,
+        lossForm.reset({
+          ...makeLossDefaults(),
+          itemId: row.record.itemId,
+          type: row.record.type,
+          quantity: String(row.record.quantity),
+          reason: row.record.reason,
           date: row.record.date,
         });
         break;
       case 'stockCount':
-        setForm({
-          ...nextForm,
-          stockItemId: row.record.itemId,
-          countedQuantity: String(row.record.counted),
+        stockCountForm.reset({
+          ...makeStockCountDefaults(),
+          itemId: row.record.itemId,
+          counted: String(row.record.counted),
           date: row.record.date,
         });
         break;
       case 'dayClose':
-        setForm({
-          ...nextForm,
+        dayCloseForm.reset({
+          ...makeDayCloseDefaults(),
           countedCash: String(row.record.countedCash),
-          closeNote: row.record.note,
+          note: row.record.note,
           date: row.record.date,
         });
         break;
       case 'customer':
-        setForm({
-          ...nextForm,
-          customerName: row.record.name,
-          customerPhone: row.record.phone,
+        customerForm.reset({
+          ...makeCustomerDefaults(),
+          name: row.record.name,
+          phone: row.record.phone,
         });
         break;
       default:
@@ -1044,14 +1106,14 @@ const Forms = () => {
     setMessage('');
   };
 
-  const handleDelete = (row: RecentRow) => {
+  const handleDelete = async (row: RecentRow) => {
     if (!canUse || !isOwnRecord(row)) {
       return;
     }
     if (row.kind === 'sale' && !can('deleteRecords')) {
       return;
     }
-    if (!window.confirm('Delete this record? This cannot be undone.')) {
+    if (!(await confirmAction('Delete this record? This cannot be undone.'))) {
       return;
     }
 
@@ -1089,7 +1151,7 @@ const Forms = () => {
 
     if (editing?.id === row.record.id) {
       setEditing(null);
-      setForm(makeInitialForm());
+      resetFormFor(editing.tab);
     }
     setMessage('Record deleted.');
   };
@@ -1199,9 +1261,9 @@ const Forms = () => {
     ];
     const creditSaleOptions = [
       { key: '', label: 'Apply to oldest credit sale' },
-      ...(form.debtSaleId &&
-      !creditRowsForDebt.some((row) => row.sale.id === form.debtSaleId)
-        ? [{ key: form.debtSaleId, label: form.debtSaleId }]
+      ...(debtValues.saleId &&
+      !creditRowsForDebt.some((row) => row.sale.id === debtValues.saleId)
+        ? [{ key: debtValues.saleId, label: debtValues.saleId }]
         : []),
       ...creditRowsForDebt.map((row) => ({
         key: row.sale.id,
@@ -1231,64 +1293,64 @@ const Forms = () => {
             title={TAB_META.sale.formTitle}
             subtitle={TAB_META.sale.subtitle}
           >
-            <form className="admin-form" onSubmit={handleSubmit}>
+            <form
+              className="admin-form"
+              onSubmit={saleForm.handleSubmit(onValidSale)}
+            >
               <div className="field-grid">
-                <Field label="Department">
-                  <AppSelect
-                    onValueChange={(value) =>
-                      patchForm({ department: value as Department })
-                    }
+                <Field
+                  label="Department"
+                  error={saleErrors.department?.message}
+                >
+                  <FormSelect
+                    control={saleForm.control}
+                    label="Department"
+                    name="department"
                     options={DEPARTMENT_OPTIONS}
-                    value={form.department}
                   />
                 </Field>
-                <Field label="Order type">
-                  <AppSelect
-                    onValueChange={(value) =>
-                      patchForm({ orderType: value as OrderType })
-                    }
+                <Field label="Order type" error={saleErrors.orderType?.message}>
+                  <FormSelect
+                    control={saleForm.control}
+                    label="Order type"
+                    name="orderType"
                     options={ORDER_TYPE_OPTIONS}
-                    value={form.orderType}
                   />
                 </Field>
-                <Field label="Tender">
-                  <AppSelect
-                    onValueChange={(value) =>
-                      patchForm({ tender: value as Tender })
-                    }
+                <Field label="Tender" error={saleErrors.tender?.message}>
+                  <FormSelect
+                    control={saleForm.control}
+                    label="Tender"
+                    name="tender"
                     options={TENDER_OPTIONS}
-                    value={form.tender}
                   />
                 </Field>
                 <Field
                   label="Customer"
                   hint={
-                    form.tender === 'Credit'
+                    saleValues.tender === 'Credit'
                       ? 'Required for credit sales.'
                       : 'Optional for paid sales.'
                   }
+                  error={saleErrors.customerId?.message}
                 >
-                  <AppSelect
-                    onValueChange={(value) => patchForm({ customerId: value })}
+                  <FormSelect
+                    control={saleForm.control}
+                    label="Customer"
+                    name="customerId"
                     options={walkInCustomerOptions}
                     placeholder="Walk-in customer"
-                    value={form.customerId}
                   />
                 </Field>
-                <Field label="Date">
-                  <AppDatePicker
-                    onValueChange={(value) => patchForm({ date: value })}
-                    value={form.date}
+                <Field label="Date" error={saleErrors.date?.message}>
+                  <FormDatePicker
+                    control={saleForm.control}
+                    label="Date"
+                    name="date"
                   />
                 </Field>
-                <Field label="Time">
-                  <AppInput
-                    onChange={(event) =>
-                      patchForm({ time: event.target.value })
-                    }
-                    type="time"
-                    value={form.time}
-                  />
+                <Field label="Time" error={saleErrors.time?.message}>
+                  <AppInput {...saleForm.register('time')} type="time" />
                 </Field>
               </div>
               <div className="form-card">
@@ -1320,42 +1382,59 @@ const Forms = () => {
                   </button>
                 </div>
               </div>
-              {form.lines.length > 0 && (
+              {saleErrors.lines?.message && (
+                <p className="field-error">{saleErrors.lines.message}</p>
+              )}
+              {saleLineFields.length > 0 && (
                 <div className="form-card">
-                  {form.lines.map((line) => (
-                    <div className="metric-row" key={line.key}>
-                      <div>
-                        <strong>{line.name}</strong>
-                        <div className="admin-note">
-                          Cost {formatNaira(line.cost)} per portion
+                  {saleLineFields.map((line, index) => {
+                    const detail = saleLineDetails[index];
+                    const quantityRegistration = saleForm.register(
+                      `lines.${index}.quantity`,
+                    );
+                    const quantityError =
+                      saleErrors.lines?.[index]?.quantity?.message;
+                    return (
+                      <div className="metric-row" key={line.id}>
+                        <div>
+                          <strong>{detail.name}</strong>
+                          <div className="admin-note">
+                            Cost {formatNaira(detail.cost)} per portion
+                          </div>
+                          {quantityError && (
+                            <small className="field-error">
+                              {quantityError}
+                            </small>
+                          )}
+                        </div>
+                        <div className="stock-item__actions">
+                          <AppInput
+                            {...quantityRegistration}
+                            aria-label={`Quantity for ${detail.name}`}
+                            classNames={{ base: 'w-20' }}
+                            min="1"
+                            onChange={(event) =>
+                              updateSaleLine(index, event.target.value)
+                            }
+                            type="number"
+                            value={line.quantity}
+                          />
+                          <strong className="tabular">
+                            {formatNaira(
+                              roundMoney(detail.unitPrice * detail.quantity),
+                            )}
+                          </strong>
+                          <button
+                            className="text-button"
+                            onClick={() => removeSaleLine(index)}
+                            type="button"
+                          >
+                            Remove
+                          </button>
                         </div>
                       </div>
-                      <div className="stock-item__actions">
-                        <AppInput
-                          aria-label={`Quantity for ${line.name}`}
-                          classNames={{ base: 'w-20' }}
-                          min="1"
-                          onChange={(event) =>
-                            updateSaleLine(line.key, event.target.value)
-                          }
-                          type="number"
-                          value={String(line.quantity)}
-                        />
-                        <strong className="tabular">
-                          {formatNaira(
-                            roundMoney(line.unitPrice * line.quantity),
-                          )}
-                        </strong>
-                        <button
-                          className="text-button"
-                          onClick={() => removeSaleLine(line.key)}
-                          type="button"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
               <div className="form-card">
@@ -1383,16 +1462,22 @@ const Forms = () => {
             title={TAB_META.debt.formTitle}
             subtitle={TAB_META.debt.subtitle}
           >
-            <form className="admin-form" onSubmit={handleSubmit}>
+            <form
+              className="admin-form"
+              onSubmit={debtForm.handleSubmit(onValidDebt)}
+            >
               <div className="field-grid">
-                <Field label="Customer" hint="Required">
-                  <AppSelect
-                    onValueChange={(value) =>
-                      patchForm({ debtCustomerId: value })
-                    }
+                <Field
+                  label="Customer"
+                  hint="Required"
+                  error={debtErrors.customerId?.message}
+                >
+                  <FormSelect
+                    control={debtForm.control}
+                    label="Customer"
+                    name="customerId"
                     options={customerOptions}
                     placeholder="Select a customer"
-                    value={form.debtCustomerId}
                   />
                 </Field>
                 <Field
@@ -1402,46 +1487,40 @@ const Forms = () => {
                       ? `${formatNaira(selectedCreditRow.outstanding)} outstanding`
                       : 'Optional'
                   }
+                  error={debtErrors.saleId?.message}
                 >
-                  <AppSelect
-                    onValueChange={(value) => patchForm({ debtSaleId: value })}
+                  <FormSelect
+                    control={debtForm.control}
+                    label="Sale"
+                    name="saleId"
                     options={creditSaleOptions}
                     placeholder="Apply to oldest credit sale"
-                    value={form.debtSaleId}
                   />
                 </Field>
-                <Field label="Amount">
+                <Field label="Amount" error={debtErrors.amount?.message}>
                   <AppInput
+                    {...debtForm.register('amount')}
                     min="0"
-                    onChange={(event) =>
-                      patchForm({ debtAmount: event.target.value })
-                    }
                     step="0.01"
                     type="number"
-                    value={form.debtAmount}
                   />
                 </Field>
-                <Field label="Method">
-                  <AppSelect
-                    onValueChange={(value) =>
-                      patchForm({ debtMethod: value as PayMethod })
-                    }
+                <Field label="Method" error={debtErrors.method?.message}>
+                  <FormSelect
+                    control={debtForm.control}
+                    label="Method"
+                    name="method"
                     options={PAY_METHOD_OPTIONS}
-                    value={form.debtMethod}
                   />
                 </Field>
-                <Field label="Reference">
-                  <AppInput
-                    onChange={(event) =>
-                      patchForm({ debtReference: event.target.value })
-                    }
-                    value={form.debtReference}
-                  />
+                <Field label="Reference" error={debtErrors.reference?.message}>
+                  <AppInput {...debtForm.register('reference')} />
                 </Field>
-                <Field label="Date">
-                  <AppDatePicker
-                    onValueChange={(value) => patchForm({ date: value })}
-                    value={form.date}
+                <Field label="Date" error={debtErrors.date?.message}>
+                  <FormDatePicker
+                    control={debtForm.control}
+                    label="Date"
+                    name="date"
                   />
                 </Field>
               </div>
@@ -1456,93 +1535,86 @@ const Forms = () => {
             title={TAB_META.delivery.formTitle}
             subtitle={TAB_META.delivery.subtitle}
           >
-            <form className="admin-form" onSubmit={handleSubmit}>
+            <form
+              className="admin-form"
+              onSubmit={deliveryForm.handleSubmit(onValidDelivery)}
+            >
               <div className="field-grid">
-                <Field label="Vendor">
-                  <AppSelect
-                    onValueChange={(value) =>
-                      patchForm({ deliveryVendorId: value })
-                    }
+                <Field label="Vendor" error={deliveryErrors.vendorId?.message}>
+                  <FormSelect
+                    control={deliveryForm.control}
+                    label="Vendor"
+                    name="vendorId"
                     options={vendorOptions}
                     placeholder="Select a vendor"
-                    value={form.deliveryVendorId}
                   />
                 </Field>
-                <Field label="Inventory item">
-                  <AppSelect
-                    onValueChange={(value) => {
-                      const item = data.inventory.find(
-                        (entry) => entry.id === value,
-                      );
-                      patchForm({
-                        deliveryInventoryItemId: value,
-                        itemName: item?.name ?? form.itemName,
-                      });
-                    }}
+                <Field
+                  label="Inventory item"
+                  error={deliveryErrors.inventoryItemId?.message}
+                >
+                  <FormSelect
+                    control={deliveryForm.control}
+                    label="Inventory item"
+                    name="inventoryItemId"
                     options={linkedInventoryOptions}
                     placeholder="No linked inventory item"
-                    value={form.deliveryInventoryItemId}
                   />
                 </Field>
-                <Field label="Item name">
-                  <AppInput
-                    onChange={(event) =>
-                      patchForm({ itemName: event.target.value })
-                    }
-                    value={form.itemName}
-                  />
+                <Field label="Item name" error={deliveryErrors.item?.message}>
+                  <AppInput {...deliveryForm.register('item')} />
                 </Field>
-                <Field label="Quantity">
+                <Field
+                  label="Quantity"
+                  error={deliveryErrors.quantity?.message}
+                >
                   <AppInput
+                    {...deliveryForm.register('quantity')}
                     min="0"
-                    onChange={(event) =>
-                      patchForm({ quantity: event.target.value })
-                    }
                     step="0.01"
                     type="number"
-                    value={form.quantity}
                   />
                 </Field>
-                <Field label="Unit cost">
+                <Field label="Unit cost" error={deliveryErrors.cost?.message}>
                   <AppInput
+                    {...deliveryForm.register('cost')}
                     min="0"
-                    onChange={(event) =>
-                      patchForm({ unitCost: event.target.value })
-                    }
                     step="0.01"
                     type="number"
-                    value={form.unitCost}
                   />
                 </Field>
-                <Field label="Amount paid now">
+                <Field
+                  label="Amount paid now"
+                  error={deliveryErrors.amountPaid?.message}
+                >
                   <AppInput
+                    {...deliveryForm.register('amountPaid')}
                     min="0"
-                    onChange={(event) =>
-                      patchForm({ amountPaid: event.target.value })
-                    }
                     step="0.01"
                     type="number"
-                    value={form.amountPaid}
                   />
                 </Field>
-                <Field label="Pay-by date">
-                  <AppDatePicker
-                    onValueChange={(value) => patchForm({ payByDate: value })}
-                    value={form.payByDate}
+                <Field
+                  label="Pay-by date"
+                  error={deliveryErrors.payByDate?.message}
+                >
+                  <FormDatePicker
+                    control={deliveryForm.control}
+                    label="Pay-by date"
+                    name="payByDate"
                   />
                 </Field>
-                <Field label="Invoice">
-                  <AppInput
-                    onChange={(event) =>
-                      patchForm({ invoice: event.target.value })
-                    }
-                    value={form.invoice}
-                  />
+                <Field label="Invoice" error={deliveryErrors.invoice?.message}>
+                  <AppInput {...deliveryForm.register('invoice')} />
                 </Field>
-                <Field label="Delivery date">
-                  <AppDatePicker
-                    onValueChange={(value) => patchForm({ date: value })}
-                    value={form.date}
+                <Field
+                  label="Delivery date"
+                  error={deliveryErrors.date?.message}
+                >
+                  <FormDatePicker
+                    control={deliveryForm.control}
+                    label="Delivery date"
+                    name="date"
                   />
                 </Field>
               </div>
@@ -1575,50 +1647,56 @@ const Forms = () => {
             title={TAB_META.vendorPayment.formTitle}
             subtitle={TAB_META.vendorPayment.subtitle}
           >
-            <form className="admin-form" onSubmit={handleSubmit}>
+            <form
+              className="admin-form"
+              onSubmit={vendorPaymentForm.handleSubmit(onValidVendorPayment)}
+            >
               <div className="field-grid">
-                <Field label="Vendor">
-                  <AppSelect
-                    onValueChange={(value) =>
-                      patchForm({ vendorPaymentVendorId: value })
-                    }
+                <Field
+                  label="Vendor"
+                  error={vendorPaymentErrors.vendorId?.message}
+                >
+                  <FormSelect
+                    control={vendorPaymentForm.control}
+                    label="Vendor"
+                    name="vendorId"
                     options={vendorOptions}
                     placeholder="Select a vendor"
-                    value={form.vendorPaymentVendorId}
                   />
                 </Field>
-                <Field label="Amount">
+                <Field
+                  label="Amount"
+                  error={vendorPaymentErrors.amount?.message}
+                >
                   <AppInput
+                    {...vendorPaymentForm.register('amount')}
                     min="0"
-                    onChange={(event) =>
-                      patchForm({ vendorPaymentAmount: event.target.value })
-                    }
                     step="0.01"
                     type="number"
-                    value={form.vendorPaymentAmount}
                   />
                 </Field>
-                <Field label="Method">
-                  <AppSelect
-                    onValueChange={(value) =>
-                      patchForm({ vendorPaymentMethod: value as PayMethod })
-                    }
+                <Field
+                  label="Method"
+                  error={vendorPaymentErrors.method?.message}
+                >
+                  <FormSelect
+                    control={vendorPaymentForm.control}
+                    label="Method"
+                    name="method"
                     options={PAY_METHOD_OPTIONS}
-                    value={form.vendorPaymentMethod}
                   />
                 </Field>
-                <Field label="Reference">
-                  <AppInput
-                    onChange={(event) =>
-                      patchForm({ vendorPaymentReference: event.target.value })
-                    }
-                    value={form.vendorPaymentReference}
-                  />
+                <Field
+                  label="Reference"
+                  error={vendorPaymentErrors.reference?.message}
+                >
+                  <AppInput {...vendorPaymentForm.register('reference')} />
                 </Field>
-                <Field label="Date">
-                  <AppDatePicker
-                    onValueChange={(value) => patchForm({ date: value })}
-                    value={form.date}
+                <Field label="Date" error={vendorPaymentErrors.date?.message}>
+                  <FormDatePicker
+                    control={vendorPaymentForm.control}
+                    label="Date"
+                    name="date"
                   />
                 </Field>
               </div>
@@ -1633,49 +1711,46 @@ const Forms = () => {
             title={TAB_META.expense.formTitle}
             subtitle={TAB_META.expense.subtitle}
           >
-            <form className="admin-form" onSubmit={handleSubmit}>
+            <form
+              className="admin-form"
+              onSubmit={expenseForm.handleSubmit(onValidExpense)}
+            >
               <div className="field-grid">
-                <Field label="Category">
-                  <AppSelect
-                    onValueChange={(value) =>
-                      patchForm({ expenseCategory: value })
-                    }
+                <Field label="Category" error={expenseErrors.category?.message}>
+                  <FormSelect
+                    control={expenseForm.control}
+                    label="Category"
+                    name="category"
                     options={EXPENSE_CATEGORY_OPTIONS}
-                    value={form.expenseCategory}
                   />
                 </Field>
-                <Field label="Description">
-                  <AppInput
-                    onChange={(event) =>
-                      patchForm({ expenseDescription: event.target.value })
-                    }
-                    value={form.expenseDescription}
-                  />
+                <Field
+                  label="Description"
+                  error={expenseErrors.description?.message}
+                >
+                  <AppInput {...expenseForm.register('description')} />
                 </Field>
-                <Field label="Amount">
+                <Field label="Amount" error={expenseErrors.amount?.message}>
                   <AppInput
+                    {...expenseForm.register('amount')}
                     min="0"
-                    onChange={(event) =>
-                      patchForm({ expenseAmount: event.target.value })
-                    }
                     step="0.01"
                     type="number"
-                    value={form.expenseAmount}
                   />
                 </Field>
-                <Field label="Method">
-                  <AppSelect
-                    onValueChange={(value) =>
-                      patchForm({ expenseMethod: value as PayMethod })
-                    }
+                <Field label="Method" error={expenseErrors.method?.message}>
+                  <FormSelect
+                    control={expenseForm.control}
+                    label="Method"
+                    name="method"
                     options={PAY_METHOD_OPTIONS}
-                    value={form.expenseMethod}
                   />
                 </Field>
-                <Field label="Date">
-                  <AppDatePicker
-                    onValueChange={(value) => patchForm({ date: value })}
-                    value={form.date}
+                <Field label="Date" error={expenseErrors.date?.message}>
+                  <FormDatePicker
+                    control={expenseForm.control}
+                    label="Date"
+                    name="date"
                   />
                 </Field>
               </div>
@@ -1690,48 +1765,44 @@ const Forms = () => {
             title={TAB_META.loss.formTitle}
             subtitle={TAB_META.loss.subtitle}
           >
-            <form className="admin-form" onSubmit={handleSubmit}>
+            <form
+              className="admin-form"
+              onSubmit={lossForm.handleSubmit(onValidLoss)}
+            >
               <div className="field-grid">
-                <Field label="Item">
-                  <AppSelect
-                    onValueChange={(value) => patchForm({ lossItemId: value })}
+                <Field label="Item" error={lossErrors.itemId?.message}>
+                  <FormSelect
+                    control={lossForm.control}
+                    label="Item"
+                    name="itemId"
                     options={inventoryOptions}
                     placeholder="Select an inventory item"
-                    value={form.lossItemId}
                   />
                 </Field>
-                <Field label="Type">
-                  <AppSelect
-                    onValueChange={(value) =>
-                      patchForm({ lossType: value as 'Loss' | 'Gain' })
-                    }
+                <Field label="Type" error={lossErrors.type?.message}>
+                  <FormSelect
+                    control={lossForm.control}
+                    label="Type"
+                    name="type"
                     options={LOSS_TYPE_OPTIONS}
-                    value={form.lossType}
                   />
                 </Field>
-                <Field label="Quantity">
+                <Field label="Quantity" error={lossErrors.quantity?.message}>
                   <AppInput
+                    {...lossForm.register('quantity')}
                     min="0"
-                    onChange={(event) =>
-                      patchForm({ lossQuantity: event.target.value })
-                    }
                     step="0.01"
                     type="number"
-                    value={form.lossQuantity}
                   />
                 </Field>
-                <Field label="Reason">
-                  <AppInput
-                    onChange={(event) =>
-                      patchForm({ lossReason: event.target.value })
-                    }
-                    value={form.lossReason}
-                  />
+                <Field label="Reason" error={lossErrors.reason?.message}>
+                  <AppInput {...lossForm.register('reason')} />
                 </Field>
-                <Field label="Date">
-                  <AppDatePicker
-                    onValueChange={(value) => patchForm({ date: value })}
-                    value={form.date}
+                <Field label="Date" error={lossErrors.date?.message}>
+                  <FormDatePicker
+                    control={lossForm.control}
+                    label="Date"
+                    name="date"
                   />
                 </Field>
               </div>
@@ -1755,31 +1826,36 @@ const Forms = () => {
             title={TAB_META.stockCount.formTitle}
             subtitle={TAB_META.stockCount.subtitle}
           >
-            <form className="admin-form" onSubmit={handleSubmit}>
+            <form
+              className="admin-form"
+              onSubmit={stockCountForm.handleSubmit(onValidStockCount)}
+            >
               <div className="field-grid">
-                <Field label="Item">
-                  <AppSelect
-                    onValueChange={(value) => patchForm({ stockItemId: value })}
+                <Field label="Item" error={stockCountErrors.itemId?.message}>
+                  <FormSelect
+                    control={stockCountForm.control}
+                    label="Item"
+                    name="itemId"
                     options={inventoryOptions}
                     placeholder="Select an inventory item"
-                    value={form.stockItemId}
                   />
                 </Field>
-                <Field label="Counted quantity">
+                <Field
+                  label="Counted quantity"
+                  error={stockCountErrors.counted?.message}
+                >
                   <AppInput
+                    {...stockCountForm.register('counted')}
                     min="0"
-                    onChange={(event) =>
-                      patchForm({ countedQuantity: event.target.value })
-                    }
                     step="0.01"
                     type="number"
-                    value={form.countedQuantity}
                   />
                 </Field>
-                <Field label="Date">
-                  <AppDatePicker
-                    onValueChange={(value) => patchForm({ date: value })}
-                    value={form.date}
+                <Field label="Date" error={stockCountErrors.date?.message}>
+                  <FormDatePicker
+                    control={stockCountForm.control}
+                    label="Date"
+                    name="date"
                   />
                 </Field>
               </div>
@@ -1808,32 +1884,31 @@ const Forms = () => {
             title={TAB_META.dayClose.formTitle}
             subtitle={TAB_META.dayClose.subtitle}
           >
-            <form className="admin-form" onSubmit={handleSubmit}>
+            <form
+              className="admin-form"
+              onSubmit={dayCloseForm.handleSubmit(onValidDayClose)}
+            >
               <div className="field-grid">
-                <Field label="Date">
-                  <AppDatePicker
-                    onValueChange={(value) => patchForm({ date: value })}
-                    value={form.date}
+                <Field label="Date" error={dayCloseErrors.date?.message}>
+                  <FormDatePicker
+                    control={dayCloseForm.control}
+                    label="Date"
+                    name="date"
                   />
                 </Field>
-                <Field label="Cash counted">
+                <Field
+                  label="Cash counted"
+                  error={dayCloseErrors.countedCash?.message}
+                >
                   <AppInput
+                    {...dayCloseForm.register('countedCash')}
                     min="0"
-                    onChange={(event) =>
-                      patchForm({ countedCash: event.target.value })
-                    }
                     step="0.01"
                     type="number"
-                    value={form.countedCash}
                   />
                 </Field>
-                <Field label="Note">
-                  <AppTextarea
-                    onChange={(event) =>
-                      patchForm({ closeNote: event.target.value })
-                    }
-                    value={form.closeNote}
-                  />
+                <Field label="Note" error={dayCloseErrors.note?.message}>
+                  <AppTextarea {...dayCloseForm.register('note')} />
                 </Field>
               </div>
               <div className="form-card">
@@ -1869,24 +1944,16 @@ const Forms = () => {
             title={TAB_META.customer.formTitle}
             subtitle={TAB_META.customer.subtitle}
           >
-            <form className="admin-form" onSubmit={handleSubmit}>
+            <form
+              className="admin-form"
+              onSubmit={customerForm.handleSubmit(onValidCustomer)}
+            >
               <div className="field-grid">
-                <Field label="Name">
-                  <AppInput
-                    onChange={(event) =>
-                      patchForm({ customerName: event.target.value })
-                    }
-                    value={form.customerName}
-                  />
+                <Field label="Name" error={customerErrors.name?.message}>
+                  <AppInput {...customerForm.register('name')} />
                 </Field>
-                <Field label="Phone">
-                  <AppInput
-                    onChange={(event) =>
-                      patchForm({ customerPhone: event.target.value })
-                    }
-                    type="tel"
-                    value={form.customerPhone}
-                  />
+                <Field label="Phone" error={customerErrors.phone?.message}>
+                  <AppInput {...customerForm.register('phone')} type="tel" />
                 </Field>
               </div>
               {messageNode}

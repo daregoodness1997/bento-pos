@@ -15,7 +15,7 @@ import type {
   Tender,
 } from 'types/store';
 import { dateKey } from 'store/seed';
-import { availablePortions, stockLevels } from 'utils/finance';
+import { availablePortions, roundMoney, stockLevels } from 'utils/finance';
 import { useStore } from './StoreContext';
 
 export type { CartLine, MenuItem, OrderLine, OrderType, Tender, SaleRecord };
@@ -37,6 +37,8 @@ interface OrderContextValue {
   total: number;
   levels: Record<string, number>;
   portionsFor: (item: MenuItem) => number;
+  maxQuantityFor: (id: string) => number;
+  canPlaceOrder: boolean;
   addItem: (item: MenuItem) => void;
   setQuantity: (id: string, quantity: number) => void;
   removeItem: (id: string) => void;
@@ -74,14 +76,43 @@ export const OrderProvider = ({ children }: Props) => {
     [levels],
   );
 
+  const levelsWithoutLine = useCallback(
+    (id?: string) => {
+      const remaining = { ...levels };
+      lines.forEach((line) => {
+        if (line.id === id) {
+          return;
+        }
+        line.recipe.forEach((part) => {
+          if (remaining[part.itemId] !== undefined) {
+            remaining[part.itemId] -= part.quantity * line.quantity;
+          }
+        });
+      });
+      return remaining;
+    },
+    [levels, lines],
+  );
+
+  const maxQuantityFor = useCallback(
+    (id: string) => {
+      const line = lines.find((entry) => entry.id === id);
+      return line ? availablePortions(line, levelsWithoutLine(id)) : Infinity;
+    },
+    [lines, levelsWithoutLine],
+  );
+
   const addItem = useCallback(
     (item: MenuItem) => {
-      if (portionsFor(item) <= 0) {
+      const existing = lines.find((line) => line.id === item.id);
+      const existingQuantity = existing?.quantity ?? 0;
+      const available = existing ? maxQuantityFor(item.id) : portionsFor(item);
+      if (existingQuantity >= available) {
         return;
       }
       setLines((current) => {
-        const existing = current.find((line) => line.id === item.id);
-        if (existing) {
+        const currentLine = current.find((line) => line.id === item.id);
+        if (currentLine) {
           return current.map((line) =>
             line.id === item.id
               ? { ...line, quantity: line.quantity + 1 }
@@ -93,18 +124,24 @@ export const OrderProvider = ({ children }: Props) => {
       setPlaced(false);
       setLastOrder(null);
     },
-    [portionsFor],
+    [lines, maxQuantityFor, portionsFor],
   );
 
-  const setQuantity = useCallback((id: string, quantity: number) => {
-    setLines((current) =>
-      quantity <= 0
-        ? current.filter((line) => line.id !== id)
-        : current.map((line) =>
-            line.id === id ? { ...line, quantity } : line,
-          ),
-    );
-  }, []);
+  const setQuantity = useCallback(
+    (id: string, quantity: number) => {
+      const next = Number.isFinite(quantity)
+        ? Math.min(Math.floor(quantity), maxQuantityFor(id))
+        : 0;
+      setLines((current) =>
+        next <= 0
+          ? current.filter((line) => line.id !== id)
+          : current.map((line) =>
+              line.id === id ? { ...line, quantity: next } : line,
+            ),
+      );
+    },
+    [maxQuantityFor],
+  );
 
   const removeItem = useCallback((id: string) => {
     setLines((current) => current.filter((line) => line.id !== id));
@@ -129,13 +166,24 @@ export const OrderProvider = ({ children }: Props) => {
     : 0;
   const total = subtotal + vat;
 
+  const canPlaceOrder = useMemo(
+    () =>
+      lines.length > 0 &&
+      can('recordSale') &&
+      lines.every(
+        (line) => line.quantity > 0 && line.quantity <= maxQuantityFor(line.id),
+      ),
+    [can, lines, maxQuantityFor],
+  );
+
   const placeOrder = useCallback(() => {
-    if (lines.length === 0 || !can('recordSale')) {
+    if (!canPlaceOrder) {
       return null;
     }
 
     const orderLines: OrderLine[] = lines.map((line) => {
-      const cost = line.recipe.reduce((sum, part) => {
+      const recipe = line.recipe.map((part) => ({ ...part }));
+      const cost = recipe.reduce((sum, part) => {
         const inventoryItem = data.inventory.find(
           (item) => item.id === part.itemId,
         );
@@ -145,8 +193,9 @@ export const OrderProvider = ({ children }: Props) => {
         name: line.name,
         quantity: line.quantity,
         unitPrice: line.price,
-        cost: Math.round(cost),
+        cost: roundMoney(cost),
         itemId: line.id,
+        recipe,
       };
     });
 
@@ -168,7 +217,7 @@ export const OrderProvider = ({ children }: Props) => {
 
     return record;
   }, [
-    can,
+    canPlaceOrder,
     customerId,
     data.inventory,
     department,
@@ -208,6 +257,8 @@ export const OrderProvider = ({ children }: Props) => {
       total,
       levels,
       portionsFor,
+      maxQuantityFor,
+      canPlaceOrder,
       addItem,
       setQuantity,
       removeItem,
@@ -220,6 +271,7 @@ export const OrderProvider = ({ children }: Props) => {
     }),
     [
       addItem,
+      canPlaceOrder,
       customerId,
       data.sales,
       department,
@@ -227,6 +279,7 @@ export const OrderProvider = ({ children }: Props) => {
       lastOrder,
       levels,
       lines,
+      maxQuantityFor,
       orderType,
       placed,
       placeOrder,

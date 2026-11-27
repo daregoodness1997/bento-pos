@@ -35,7 +35,7 @@ const PrintActions = memo(({ order, compact, thermalOnly }: Props) => {
           onClick={() => printReceipt(order)}
           type="button"
         >
-          Print receipt
+          Print both copies
         </button>
       )}
       <button
@@ -44,7 +44,7 @@ const PrintActions = memo(({ order, compact, thermalOnly }: Props) => {
         onClick={() => printThermal(order)}
         type="button"
       >
-        {thermalOnly ? 'Print receipt' : 'Thermal ESC/POS'}
+        {thermalOnly ? 'Print both copies' : 'Print both (ESC/POS)'}
       </button>
       {canUseThermal && !thermalReady && (
         <button

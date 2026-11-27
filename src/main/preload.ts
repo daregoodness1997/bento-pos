@@ -2,7 +2,17 @@
 /* eslint no-unused-vars: off */
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 
-export type Channels = 'ipc-example' | 'print-receipt' | 'print-escpos-network';
+import type { BentoData } from 'types/store';
+
+export type Channels =
+  | 'ipc-example'
+  | 'print-receipt'
+  | 'print-escpos-network'
+  | 'store:load'
+  | 'store:save'
+  | 'prefs:get'
+  | 'prefs:set'
+  | 'prefs:remove';
 
 export interface NetworkPrinterTarget {
   host: string;
@@ -34,6 +44,16 @@ const electronHandler = {
       bytes,
       target,
     ) as Promise<boolean>,
+  loadStore: () =>
+    ipcRenderer.invoke('store:load') as Promise<BentoData | null>,
+  saveStore: (data: BentoData) =>
+    ipcRenderer.invoke('store:save', data) as Promise<void>,
+  getPreference: (key: string) =>
+    ipcRenderer.invoke('prefs:get', key) as Promise<string | null>,
+  setPreference: (key: string, value: string) =>
+    ipcRenderer.invoke('prefs:set', key, value) as Promise<void>,
+  removePreference: (key: string) =>
+    ipcRenderer.invoke('prefs:remove', key) as Promise<void>,
 };
 
 contextBridge.exposeInMainWorld('electron', electronHandler);

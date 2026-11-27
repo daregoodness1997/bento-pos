@@ -1,3 +1,4 @@
+import type { BentoData, RecipeLine, SaleRecord } from 'types/store';
 import { createSeedData, dateKey } from 'store/seed';
 import {
   allocationForVendor,
@@ -27,6 +28,69 @@ describe('vendor allocations', () => {
 });
 
 describe('stock levels', () => {
+  const fixture = (): BentoData => {
+    const data = createSeedData();
+    data.deliveries = [];
+    data.sales = [];
+    data.losses = [];
+    data.stockCounts = [];
+    data.inventory = [
+      {
+        id: 'inv-test',
+        name: 'Test item',
+        category: 'Restaurant',
+        unit: 'piece',
+        openingStock: 10,
+        cost: 100,
+        reorderLevel: 3,
+        targetLevel: 20,
+      },
+    ];
+    data.menu = [
+      {
+        id: 'menu-test',
+        name: 'Test dish',
+        price: 500,
+        category: 'Restaurant',
+        prepTime: 1,
+        tone: 'signal',
+        recipe: [{ itemId: 'inv-test', quantity: 2 }],
+      },
+    ];
+    return data;
+  };
+
+  const saleWith = (
+    status: SaleRecord['status'],
+    recipe?: RecipeLine[],
+  ): SaleRecord => ({
+    id: '#1',
+    date: dateKey(),
+    time: '12:00',
+    createdAt: new Date().toISOString(),
+    channel: 'Counter',
+    department: 'Restaurant',
+    orderType: 'Dine in',
+    tender: 'Cash',
+    status,
+    staffId: 'user-owner',
+    items: 'Test dish × 1',
+    lines: [
+      {
+        name: 'Test dish',
+        quantity: 1,
+        unitPrice: 500,
+        cost: 200,
+        itemId: 'menu-test',
+        recipe,
+      },
+    ],
+    subtotal: 500,
+    vat: 38,
+    total: 538,
+    amountPaid: 538,
+  });
+
   it('includes deliveries, recipe use, losses and counts', () => {
     const data = createSeedData();
     data.deliveries = [];
@@ -115,6 +179,21 @@ describe('stock levels', () => {
       staffId: 'user-owner',
       createdAt: new Date().toISOString(),
     });
+
+    expect(stockLevels(data)['inv-test']).toBe(7);
+  });
+
+  it('ignores refunded sales', () => {
+    const data = fixture();
+    data.sales.push(saleWith('Refunded'));
+
+    expect(stockLevels(data)['inv-test']).toBe(10);
+  });
+
+  it('uses the recipe recorded on the sale', () => {
+    const data = fixture();
+    data.sales.push(saleWith('Paid', [{ itemId: 'inv-test', quantity: 3 }]));
+    data.menu[0].recipe = [{ itemId: 'inv-test', quantity: 9 }];
 
     expect(stockLevels(data)['inv-test']).toBe(7);
   });

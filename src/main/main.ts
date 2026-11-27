@@ -13,7 +13,17 @@ import net from 'net';
 import { app, BrowserWindow, shell, ipcMain, session } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
+
+import type { BentoData } from 'types/store';
 import MenuBuilder from './menu';
+import {
+  closeDatabase,
+  getPreference,
+  loadSnapshot,
+  removePreference,
+  saveSnapshot,
+  setPreference,
+} from './storeDb';
 import { resolveHtmlPath } from './util';
 
 class AppUpdater {
@@ -69,6 +79,22 @@ ipcMain.handle(
       });
     }),
 );
+
+ipcMain.handle('store:load', () => loadSnapshot());
+
+ipcMain.handle('store:save', (_event, data: BentoData) => {
+  saveSnapshot(data);
+});
+
+ipcMain.handle('prefs:get', (_event, key: string) => getPreference(key));
+
+ipcMain.handle('prefs:set', (_event, key: string, value: string) => {
+  setPreference(key, value);
+});
+
+ipcMain.handle('prefs:remove', (_event, key: string) => {
+  removePreference(key);
+});
 
 const allowThermalPermission = (permission: string) =>
   permission === 'serial' || permission === 'usb';
@@ -176,6 +202,10 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+app.on('before-quit', () => {
+  closeDatabase();
 });
 
 app

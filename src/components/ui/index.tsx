@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Pagination } from '@nextui-org/react';
 
 export * from './controls';
+
+const DEFAULT_PAGE_SIZE = 10;
 
 interface PageHeaderProps {
   title: string;
@@ -130,19 +133,25 @@ export const StatGrid = ({ children }: { children: React.ReactNode }) => (
 interface FieldProps {
   label: string;
   hint?: string;
+  error?: string;
   children: React.ReactNode;
 }
 
-export const Field = ({ label, hint, children }: FieldProps) => (
+export const Field = ({ label, hint, error, children }: FieldProps) => (
   <div className="admin-field">
     <span>{label}</span>
     {children}
-    {hint && <small>{hint}</small>}
+    {error ? (
+      <small className="field-error">{error}</small>
+    ) : (
+      hint && <small>{hint}</small>
+    )}
   </div>
 );
 
 Field.defaultProps = {
   hint: undefined,
+  error: undefined,
 };
 
 export interface TabItem {
@@ -208,6 +217,7 @@ interface RecordTableProps<T> {
   getKey: (row: T, index: number) => string;
   emptyTitle?: string;
   emptyMessage?: string;
+  pageSize?: number;
 }
 
 export const RecordTable = <T,>({
@@ -216,53 +226,98 @@ export const RecordTable = <T,>({
   getKey,
   emptyTitle = 'Nothing here yet',
   emptyMessage,
-}: RecordTableProps<T>) => (
-  <>
-    <div className="table-wrap">
-      <table className="data-table admin-table">
-        <thead>
-          <tr>
-            {columns.map((column) => (
-              <th
-                className={column.align === 'right' ? 'align-right' : undefined}
-                key={column.key}
-              >
-                {column.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => (
-            <tr key={getKey(row, index)}>
+  pageSize = DEFAULT_PAGE_SIZE,
+}: RecordTableProps<T>) => {
+  const [page, setPage] = useState(1);
+  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+
+  useEffect(() => {
+    setPage(1);
+  }, [rows]);
+
+  useEffect(() => {
+    if (page > pageCount) {
+      setPage(pageCount);
+    }
+  }, [page, pageCount]);
+
+  const visibleRows = useMemo(
+    () => rows.slice((page - 1) * pageSize, page * pageSize),
+    [page, pageSize, rows],
+  );
+  const start = rows.length === 0 ? 0 : (page - 1) * pageSize + 1;
+  const end = Math.min(page * pageSize, rows.length);
+
+  return (
+    <>
+      <div className="table-wrap">
+        <table className="data-table admin-table">
+          <thead>
+            <tr>
               {columns.map((column) => (
-                <td
+                <th
                   className={
-                    column.align === 'right' ? 'tabular align-right' : undefined
+                    column.align === 'right' ? 'align-right' : undefined
                   }
                   key={column.key}
                 >
-                  {column.render
-                    ? column.render(row)
-                    : String(
-                        (row as Record<string, unknown>)[column.key] ?? '',
-                      )}
-                </td>
+                  {column.label}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-    {rows.length === 0 && (
-      <EmptyState title={emptyTitle} message={emptyMessage} />
-    )}
-  </>
-);
+          </thead>
+          <tbody>
+            {visibleRows.map((row, index) => (
+              <tr key={getKey(row, index)}>
+                {columns.map((column) => (
+                  <td
+                    className={
+                      column.align === 'right'
+                        ? 'tabular align-right'
+                        : undefined
+                    }
+                    key={column.key}
+                  >
+                    {column.render
+                      ? column.render(row)
+                      : String(
+                          (row as Record<string, unknown>)[column.key] ?? '',
+                        )}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {rows.length === 0 && (
+        <EmptyState title={emptyTitle} message={emptyMessage} />
+      )}
+      {rows.length > pageSize && (
+        <div className="table-pagination">
+          <span>
+            Showing {start}–{end} of {rows.length}
+          </span>
+          <Pagination
+            color="primary"
+            onChange={setPage}
+            page={page}
+            radius="sm"
+            showControls
+            size="sm"
+            total={pageCount}
+            variant="flat"
+          />
+        </div>
+      )}
+    </>
+  );
+};
 
 RecordTable.defaultProps = {
   emptyTitle: 'Nothing here yet',
   emptyMessage: undefined,
+  pageSize: DEFAULT_PAGE_SIZE,
 };
 
 export const FormActions = ({

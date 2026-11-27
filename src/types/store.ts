@@ -51,6 +51,7 @@ export interface OrderLine {
   unitPrice: number;
   cost: number;
   itemId?: string;
+  recipe?: RecipeLine[];
 }
 
 export interface SaleRecord {

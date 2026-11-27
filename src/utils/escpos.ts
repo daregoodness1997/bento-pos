@@ -1,4 +1,6 @@
 import type { OrderRecord } from '../context/OrderContext';
+import { RECEIPT_COPY_LABELS } from './receipt';
+import type { ReceiptCopy } from './receipt';
 
 const WIDTH = 32;
 const ESC = 27;
@@ -55,7 +57,10 @@ const wrapText = (value: string, width: number) => {
   return lines.length === 0 ? [''] : lines;
 };
 
-export const buildEscPosReceipt = (order: OrderRecord) => {
+export const buildEscPosReceipt = (
+  order: OrderRecord,
+  copy: ReceiptCopy = 'customer',
+) => {
   const bytes: number[] = [];
 
   push(bytes, [ESC, 64]);
@@ -67,6 +72,9 @@ export const buildEscPosReceipt = (order: OrderRecord) => {
   push(bytes, [GS, 33, 0]);
   push(bytes, [ESC, 69, 0]);
   writeLine(bytes, 'Main counter');
+  push(bytes, [ESC, 69, 1]);
+  writeLine(bytes, RECEIPT_COPY_LABELS[copy]);
+  push(bytes, [ESC, 69, 0]);
   writeLine(bytes, `Ticket ${order.id}`);
   push(bytes, [ESC, 97, 0]);
   writeLine(bytes, '-'.repeat(WIDTH));
@@ -93,7 +101,12 @@ export const buildEscPosReceipt = (order: OrderRecord) => {
   push(bytes, [ESC, 97, 1]);
   writeLine(bytes, order.status.toUpperCase());
   writeLine(bytes, `Paid by ${order.tender}`);
-  writeLine(bytes, 'Thank you for eating with us.');
+  writeLine(
+    bytes,
+    copy === 'merchant'
+      ? 'Merchant copy - retain for records.'
+      : 'Thank you for eating with us.',
+  );
   push(bytes, [ESC, 100, 3]);
   push(bytes, [GS, 86, 0]);
 
