@@ -8,6 +8,7 @@ import {
   PageHeader,
   Panel,
   RecordTable,
+  SidePanel,
   StatGrid,
   StatTile,
   Tabs,
@@ -471,8 +472,100 @@ const Stock = () => {
     clearForm();
   };
 
+  const itemSidePanel =
+    form === 'item' && canManageInventory ? (
+      <SidePanel
+        label="Inventory item"
+        onClose={clearForm}
+        subtitle="Set the units and stock thresholds used across the app."
+        title={editingId ? 'Edit inventory item' : 'Add inventory item'}
+      >
+        <form className="admin-form" onSubmit={submitItem}>
+          <div className="field-grid">
+            <Field label="Name">
+              <input
+                aria-label="Name"
+                onChange={(event) => setItemName(event.target.value)}
+                required
+                type="text"
+                value={itemName}
+              />
+            </Field>
+            <Field label="Category">
+              <select
+                aria-label="Category"
+                onChange={(event) =>
+                  setItemCategory(event.target.value as Department)
+                }
+                value={itemCategory}
+              >
+                {DEPARTMENTS.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Unit">
+              <input
+                aria-label="Unit"
+                onChange={(event) => setItemUnit(event.target.value)}
+                required
+                type="text"
+                value={itemUnit}
+              />
+            </Field>
+            <Field label="Opening stock">
+              <input
+                aria-label="Opening stock"
+                onChange={(event) => setItemOpening(event.target.value)}
+                step="0.01"
+                type="number"
+                value={itemOpening}
+              />
+            </Field>
+            <Field label="Cost">
+              <input
+                aria-label="Cost"
+                min="0"
+                onChange={(event) => setItemCost(event.target.value)}
+                step="0.01"
+                type="number"
+                value={itemCost}
+              />
+            </Field>
+            <Field label="Reorder level">
+              <input
+                aria-label="Reorder level"
+                min="0"
+                onChange={(event) => setItemReorder(event.target.value)}
+                step="0.01"
+                type="number"
+                value={itemReorder}
+              />
+            </Field>
+            <Field label="Target level">
+              <input
+                aria-label="Target level"
+                min="0"
+                onChange={(event) => setItemTarget(event.target.value)}
+                step="0.01"
+                type="number"
+                value={itemTarget}
+              />
+            </Field>
+          </div>
+          <FormActions
+            onSecondary={clearForm}
+            secondaryLabel="Cancel"
+            submitLabel={editingId ? 'Update item' : 'Save item'}
+          />
+        </form>
+      </SidePanel>
+    ) : undefined;
+
   return (
-    <DashboardLayout>
+    <DashboardLayout sidePanel={itemSidePanel}>
       <PageHeader
         title="Stock"
         subtitle={
@@ -998,95 +1091,6 @@ const Stock = () => {
               onSecondary={clearForm}
               secondaryLabel="Cancel"
               submitLabel={editingId ? 'Update record' : 'Save record'}
-            />
-          </form>
-        </Panel>
-      )}
-
-      {form === 'item' && canManageInventory && (
-        <Panel
-          title={editingId ? 'Edit inventory item' : 'Add inventory item'}
-          subtitle="Set the units and stock thresholds used across the app."
-        >
-          <form className="admin-form" onSubmit={submitItem}>
-            <div className="field-grid">
-              <Field label="Name">
-                <input
-                  aria-label="Name"
-                  onChange={(event) => setItemName(event.target.value)}
-                  required
-                  type="text"
-                  value={itemName}
-                />
-              </Field>
-              <Field label="Category">
-                <select
-                  aria-label="Category"
-                  onChange={(event) =>
-                    setItemCategory(event.target.value as Department)
-                  }
-                  value={itemCategory}
-                >
-                  {DEPARTMENTS.map((name) => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Unit">
-                <input
-                  aria-label="Unit"
-                  onChange={(event) => setItemUnit(event.target.value)}
-                  required
-                  type="text"
-                  value={itemUnit}
-                />
-              </Field>
-              <Field label="Opening stock">
-                <input
-                  aria-label="Opening stock"
-                  onChange={(event) => setItemOpening(event.target.value)}
-                  step="0.01"
-                  type="number"
-                  value={itemOpening}
-                />
-              </Field>
-              <Field label="Cost">
-                <input
-                  aria-label="Cost"
-                  min="0"
-                  onChange={(event) => setItemCost(event.target.value)}
-                  step="0.01"
-                  type="number"
-                  value={itemCost}
-                />
-              </Field>
-              <Field label="Reorder level">
-                <input
-                  aria-label="Reorder level"
-                  min="0"
-                  onChange={(event) => setItemReorder(event.target.value)}
-                  step="0.01"
-                  type="number"
-                  value={itemReorder}
-                />
-              </Field>
-              <Field label="Target level">
-                <input
-                  aria-label="Target level"
-                  min="0"
-                  onChange={(event) => setItemTarget(event.target.value)}
-                  step="0.01"
-                  type="number"
-                  value={itemTarget}
-                />
-              </Field>
-            </div>
-            <FormActions
-              onSecondary={clearForm}
-              secondaryLabel="Cancel"
-              submitLabel={editingId ? 'Update item' : 'Save item'}
             />
           </form>
         </Panel>

@@ -57,6 +57,45 @@ Panel.defaultProps = {
   className: '',
 };
 
+interface SidePanelProps {
+  label: string;
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}
+
+export const SidePanel = ({
+  label,
+  title,
+  subtitle,
+  onClose,
+  children,
+}: SidePanelProps) => (
+  <aside aria-label={label} className="ticket-rail">
+    <div className="ticket-header">
+      <div className="ticket-eyebrow">
+        <span>{label}</span>
+        <button
+          aria-label="Close panel"
+          className="text-button"
+          onClick={onClose}
+          type="button"
+        >
+          Close
+        </button>
+      </div>
+      <h2 className="ticket-title">{title}</h2>
+      {subtitle && <p className="ticket-type">{subtitle}</p>}
+    </div>
+    <div className="ticket-scroll">{children}</div>
+  </aside>
+);
+
+SidePanel.defaultProps = {
+  subtitle: undefined,
+};
+
 interface StatTileProps {
   label: string;
   value: string;
