@@ -101,7 +101,8 @@
     "zod": "^3.24.1"
   },
   "resolutions": {
-    "@internationalized/date": "3.12.4"
+    "@internationalized/date": "3.12.4",
+    "yargs": "17.7.3"
   },
   "devDependencies": {
     "@electron/notarize": "^2.1.0",
@@ -240,6 +241,9 @@
       "owner": "Dare Goodness",
       "repo": "Bento POS"
     }
+  },
+  "engines": {
+    "node": "22.x || 24.x"
   },
   "devEngines": {
     "runtime": {
