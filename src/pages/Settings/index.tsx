@@ -1,11 +1,13 @@
 import React, { memo, useEffect, useState } from 'react';
 import { Switch } from '@nextui-org/react';
+import { useSearchParams } from 'react-router-dom';
 
 import { DashboardLayout } from 'layouts';
-import { ThermalPrinterPanel } from 'components';
-import { DEFAULT_PIN, useAuth, usePrint, useStore } from 'context';
+import { AppInput, PageHeader, ThermalPrinterPanel } from 'components';
+import { DEFAULT_PIN, useAuth, useStore } from 'context';
 import { DEFAULT_SETTINGS } from 'store/seed';
 import type { AppSettings } from 'types/store';
+import Setup from '../Setup';
 
 const SECTIONS = [
   'Register',
@@ -13,14 +15,20 @@ const SECTIONS = [
   'Printer',
   'Payments',
   'Security',
+  'Setup',
 ] as const;
 type Section = (typeof SECTIONS)[number];
+
+const readSection = (value: string | null): Section =>
+  SECTIONS.find((item) => item === value) ?? 'Register';
 
 const Settings = () => {
   const { data, updateSettings } = useStore();
   const { setPin: updatePin, lock, pin } = useAuth();
-  const { autoPrint, setAutoPrint } = usePrint();
-  const [section, setSection] = useState<Section>('Register');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [section, setSection] = useState<Section>(() =>
+    readSection(searchParams.get('section')),
+  );
   const [draft, setDraft] = useState<AppSettings>(data.settings);
   const [saved, setSaved] = useState(false);
   const [currentPin, setCurrentPin] = useState('');
@@ -31,6 +39,10 @@ const Settings = () => {
   useEffect(() => {
     setDraft(data.settings);
   }, [data.settings]);
+
+  useEffect(() => {
+    setSection(readSection(searchParams.get('section')));
+  }, [searchParams]);
 
   useEffect(() => {
     if (!saved) {
@@ -54,7 +66,6 @@ const Settings = () => {
 
   const handleDiscard = () => {
     setDraft({ ...DEFAULT_SETTINGS });
-    setAutoPrint(true);
     setCurrentPin('');
     setNextPin('');
     setConfirmPin('');
@@ -76,16 +87,17 @@ const Settings = () => {
     setPinMessage('PIN updated. Use it the next time the register locks.');
   };
 
+  const selectSection = (next: Section) => {
+    setSection(next);
+    setSearchParams({ section: next });
+  };
+
   return (
     <DashboardLayout>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Settings</h1>
-          <p className="page-subtitle">
-            Keep this register ready for the next shift.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Settings"
+        subtitle="Keep this register ready for the next shift."
+      />
 
       <div className="settings-layout">
         <nav className="settings-nav" aria-label="Settings sections">
@@ -93,7 +105,7 @@ const Settings = () => {
             <button
               className={section === name ? 'is-active' : ''}
               key={name}
-              onClick={() => setSection(name)}
+              onClick={() => selectSection(name)}
               type="button"
             >
               {name}
@@ -111,8 +123,8 @@ const Settings = () => {
               <div className="field-grid">
                 <label className="field-label" htmlFor="store-name">
                   <span>Store name</span>
-                  <input
-                    className="field-input"
+                  <AppInput
+                    aria-label="Store name"
                     id="store-name"
                     onChange={(event) => patch('storeName', event.target.value)}
                     value={draft.storeName}
@@ -120,8 +132,8 @@ const Settings = () => {
                 </label>
                 <label className="field-label" htmlFor="terminal-id">
                   <span>Terminal label</span>
-                  <input
-                    className="field-input"
+                  <AppInput
+                    aria-label="Terminal label"
                     id="terminal-id"
                     onChange={(event) =>
                       patch('terminalId', event.target.value)
@@ -131,8 +143,8 @@ const Settings = () => {
                 </label>
               </div>
               <p className="admin-note">
-                Opening cash and bank balances are managed in Setup → Opening
-                balances.
+                Opening cash and bank balances are managed in Settings → Setup →
+                Opening balances.
               </p>
             </section>
           )}
@@ -146,8 +158,8 @@ const Settings = () => {
               <div className="field-grid">
                 <label className="field-label" htmlFor="receipt-footer">
                   <span>Footer message</span>
-                  <input
-                    className="field-input"
+                  <AppInput
+                    aria-label="Footer message"
                     id="receipt-footer"
                     onChange={(event) =>
                       patch('receiptFooter', event.target.value)
@@ -155,20 +167,6 @@ const Settings = () => {
                     value={draft.receiptFooter}
                   />
                 </label>
-              </div>
-              <div className="setting-row">
-                <div>
-                  <div className="setting-row__title">Print automatically</div>
-                  <div className="setting-row__description">
-                    Send each receipt to the printer after payment.
-                  </div>
-                </div>
-                <Switch
-                  color="primary"
-                  isSelected={autoPrint}
-                  onChange={(event) => setAutoPrint(event.target.checked)}
-                  size="sm"
-                />
               </div>
               <div className="setting-row">
                 <div>
@@ -259,8 +257,8 @@ const Settings = () => {
               <div className="field-grid">
                 <label className="field-label" htmlFor="current-pin">
                   <span>Current PIN</span>
-                  <input
-                    className="field-input"
+                  <AppInput
+                    aria-label="Current PIN"
                     id="current-pin"
                     inputMode="numeric"
                     maxLength={4}
@@ -274,8 +272,8 @@ const Settings = () => {
                 </label>
                 <label className="field-label" htmlFor="new-pin">
                   <span>New PIN</span>
-                  <input
-                    className="field-input"
+                  <AppInput
+                    aria-label="New PIN"
                     id="new-pin"
                     inputMode="numeric"
                     maxLength={4}
@@ -289,8 +287,8 @@ const Settings = () => {
                 </label>
                 <label className="field-label" htmlFor="confirm-pin">
                   <span>Confirm new PIN</span>
-                  <input
-                    className="field-input"
+                  <AppInput
+                    aria-label="Confirm new PIN"
                     id="confirm-pin"
                     inputMode="numeric"
                     maxLength={4}
@@ -328,22 +326,26 @@ const Settings = () => {
             </section>
           )}
 
-          <div className="settings-actions">
-            <button
-              className="secondary-button"
-              onClick={handleDiscard}
-              type="button"
-            >
-              Reset
-            </button>
-            <button
-              className="primary-button"
-              onClick={handleSave}
-              type="button"
-            >
-              {saved ? 'Saved' : 'Save changes'}
-            </button>
-          </div>
+          {section === 'Setup' && <Setup embedded />}
+
+          {section !== 'Setup' && (
+            <div className="settings-actions">
+              <button
+                className="secondary-button"
+                onClick={handleDiscard}
+                type="button"
+              >
+                Reset
+              </button>
+              <button
+                className="primary-button"
+                onClick={handleSave}
+                type="button"
+              >
+                {saved ? 'Saved' : 'Save changes'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </DashboardLayout>

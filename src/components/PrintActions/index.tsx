@@ -13,9 +13,10 @@ const TRANSPORT_LABELS: Record<ThermalTransport, string> = {
 interface Props {
   order: OrderRecord;
   compact: boolean;
+  thermalOnly: boolean;
 }
 
-const PrintActions = memo(({ order, compact }: Props) => {
+const PrintActions = memo(({ order, compact, thermalOnly }: Props) => {
   const {
     printReceipt,
     printThermal,
@@ -28,20 +29,22 @@ const PrintActions = memo(({ order, compact }: Props) => {
 
   return (
     <div className={`print-actions ${compact ? 'print-actions--compact' : ''}`}>
+      {!thermalOnly && (
+        <button
+          className="secondary-button"
+          onClick={() => printReceipt(order)}
+          type="button"
+        >
+          Print receipt
+        </button>
+      )}
       <button
-        className="secondary-button"
-        onClick={() => printReceipt(order)}
-        type="button"
-      >
-        Print receipt
-      </button>
-      <button
-        className="secondary-button"
+        className={thermalOnly ? 'primary-button' : 'secondary-button'}
         disabled={!canUseThermal}
         onClick={() => printThermal(order)}
         type="button"
       >
-        Thermal ESC/POS
+        {thermalOnly ? 'Print receipt' : 'Thermal ESC/POS'}
       </button>
       {canUseThermal && !thermalReady && (
         <button

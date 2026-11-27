@@ -2,6 +2,10 @@ import React, { useMemo, useState } from 'react';
 
 import { DashboardLayout } from 'layouts';
 import {
+  AppCheckbox,
+  AppDatePicker,
+  AppInput,
+  AppSelect,
   EmptyState,
   Field,
   FormActions,
@@ -36,6 +40,14 @@ const DEPARTMENTS: Department[] = ['Restaurant', 'Bar', 'Snooker', 'Viewing'];
 const DEPARTMENT_TABS: { id: string; label: string }[] = [
   { id: 'All', label: 'All' },
   ...DEPARTMENTS.map((name) => ({ id: name, label: name })),
+];
+const DEPARTMENT_OPTIONS = DEPARTMENTS.map((name) => ({
+  key: name,
+  label: name,
+}));
+const LOSS_TYPE_OPTIONS = [
+  { key: 'Loss', label: 'Loss' },
+  { key: 'Gain', label: 'Gain' },
 ];
 
 type StockForm = 'delivery' | 'count' | 'loss' | 'item';
@@ -106,6 +118,21 @@ const Stock = () => {
     () => new Map(data.inventory.map((item) => [item.id, item] as const)),
     [data.inventory],
   );
+
+  const vendorOptions = [
+    { key: '', label: 'Select vendor' },
+    ...data.vendors.map((vendor) => ({
+      key: vendor.id,
+      label: vendor.name,
+    })),
+  ];
+  const inventoryOptions = [
+    { key: '', label: 'Select item' },
+    ...data.inventory.map((item) => ({
+      key: item.id,
+      label: item.name,
+    })),
+  ];
 
   const lowStockItems = useMemo(
     () =>
@@ -483,40 +510,33 @@ const Stock = () => {
         <form className="admin-form" onSubmit={submitItem}>
           <div className="field-grid">
             <Field label="Name">
-              <input
+              <AppInput
                 aria-label="Name"
+                isRequired
                 onChange={(event) => setItemName(event.target.value)}
-                required
                 type="text"
                 value={itemName}
               />
             </Field>
             <Field label="Category">
-              <select
+              <AppSelect
                 aria-label="Category"
-                onChange={(event) =>
-                  setItemCategory(event.target.value as Department)
-                }
+                onValueChange={(value) => setItemCategory(value as Department)}
+                options={DEPARTMENT_OPTIONS}
                 value={itemCategory}
-              >
-                {DEPARTMENTS.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
+              />
             </Field>
             <Field label="Unit">
-              <input
+              <AppInput
                 aria-label="Unit"
+                isRequired
                 onChange={(event) => setItemUnit(event.target.value)}
-                required
                 type="text"
                 value={itemUnit}
               />
             </Field>
             <Field label="Opening stock">
-              <input
+              <AppInput
                 aria-label="Opening stock"
                 onChange={(event) => setItemOpening(event.target.value)}
                 step="0.01"
@@ -525,7 +545,7 @@ const Stock = () => {
               />
             </Field>
             <Field label="Cost">
-              <input
+              <AppInput
                 aria-label="Cost"
                 min="0"
                 onChange={(event) => setItemCost(event.target.value)}
@@ -535,7 +555,7 @@ const Stock = () => {
               />
             </Field>
             <Field label="Reorder level">
-              <input
+              <AppInput
                 aria-label="Reorder level"
                 min="0"
                 onChange={(event) => setItemReorder(event.target.value)}
@@ -545,7 +565,7 @@ const Stock = () => {
               />
             </Field>
             <Field label="Target level">
-              <input
+              <AppInput
                 aria-label="Target level"
                 min="0"
                 onChange={(event) => setItemTarget(event.target.value)}
@@ -617,7 +637,7 @@ const Stock = () => {
       >
         <div className="admin-toolbar">
           <label className="menu-search" htmlFor="stock-search">
-            <input
+            <AppInput
               aria-label="Search stock items"
               id="stock-search"
               onChange={(event) => setQuery(event.target.value)}
@@ -626,15 +646,14 @@ const Stock = () => {
               value={query}
             />
           </label>
-          <label className="checklist__item" htmlFor="low-stock-only">
-            <input
-              checked={lowOnly}
-              id="low-stock-only"
-              onChange={(event) => setLowOnly(event.target.checked)}
-              type="checkbox"
-            />
+          <AppCheckbox
+            aria-label="Low stock only"
+            id="low-stock-only"
+            isSelected={lowOnly}
+            onValueChange={setLowOnly}
+          >
             Low stock only
-          </label>
+          </AppCheckbox>
         </div>
 
         <Tabs
@@ -842,47 +861,34 @@ const Stock = () => {
           <form className="admin-form" onSubmit={submitDelivery}>
             <div className="field-grid">
               <Field label="Vendor">
-                <select
+                <AppSelect
                   aria-label="Vendor"
-                  onChange={(event) => setDeliveryVendorId(event.target.value)}
-                  required
+                  isRequired
+                  onValueChange={setDeliveryVendorId}
+                  options={vendorOptions}
+                  placeholder="Select vendor"
                   value={deliveryVendorId}
-                >
-                  <option value="">Select vendor</option>
-                  {data.vendors.map((vendor) => (
-                    <option key={vendor.id} value={vendor.id}>
-                      {vendor.name}
-                    </option>
-                  ))}
-                </select>
+                />
               </Field>
               <Field label="Inventory item">
-                <select
+                <AppSelect
                   aria-label="Inventory item"
-                  onChange={(event) =>
-                    handleDeliveryItemChange(event.target.value)
-                  }
-                  required
+                  isRequired
+                  onValueChange={handleDeliveryItemChange}
+                  options={inventoryOptions}
+                  placeholder="Select item"
                   value={deliveryItemId}
-                >
-                  <option value="">Select item</option>
-                  {data.inventory.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
+                />
               </Field>
               <Field label="Date">
-                <input
+                <AppDatePicker
                   aria-label="Date"
-                  onChange={(event) => setDeliveryDate(event.target.value)}
-                  type="date"
+                  onValueChange={setDeliveryDate}
                   value={deliveryDate}
                 />
               </Field>
               <Field label="Quantity">
-                <input
+                <AppInput
                   aria-label="Quantity"
                   min="0"
                   onChange={(event) => setDeliveryQuantity(event.target.value)}
@@ -892,7 +898,7 @@ const Stock = () => {
                 />
               </Field>
               <Field label="Unit cost">
-                <input
+                <AppInput
                   aria-label="Unit cost"
                   min="0"
                   onChange={(event) => setDeliveryCost(event.target.value)}
@@ -905,7 +911,7 @@ const Stock = () => {
                 label="Amount paid now"
                 hint="Enter 0 to put the full total on the vendor's account."
               >
-                <input
+                <AppInput
                   aria-label="Amount paid now"
                   min="0"
                   onChange={(event) => setDeliveryPaid(event.target.value)}
@@ -915,15 +921,14 @@ const Stock = () => {
                 />
               </Field>
               <Field label="Pay-by date" hint="Optional">
-                <input
+                <AppDatePicker
                   aria-label="Pay-by date"
-                  onChange={(event) => setDeliveryPayBy(event.target.value)}
-                  type="date"
+                  onValueChange={setDeliveryPayBy}
                   value={deliveryPayBy}
                 />
               </Field>
               <Field label="Invoice">
-                <input
+                <AppInput
                   aria-label="Invoice"
                   onChange={(event) => setDeliveryInvoice(event.target.value)}
                   type="text"
@@ -958,27 +963,19 @@ const Stock = () => {
           <form className="admin-form" onSubmit={submitCount}>
             <div className="field-grid">
               <Field label="Item">
-                <select
+                <AppSelect
                   aria-label="Item"
-                  onChange={(event) =>
-                    handleCountItemChange(event.target.value)
-                  }
-                  required
+                  isRequired
+                  onValueChange={handleCountItemChange}
+                  options={inventoryOptions}
+                  placeholder="Select item"
                   value={countItemId}
-                >
-                  <option value="">Select item</option>
-                  {data.inventory.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
+                />
               </Field>
               <Field label="Date">
-                <input
+                <AppDatePicker
                   aria-label="Date"
-                  onChange={(event) => setCountDate(event.target.value)}
-                  type="date"
+                  onValueChange={setCountDate}
                   value={countDate}
                 />
               </Field>
@@ -986,15 +983,15 @@ const Stock = () => {
                 label="Previous level"
                 hint="Calculated from stock records"
               >
-                <input
+                <AppInput
                   aria-label="Previous level"
-                  readOnly
+                  isReadOnly
                   type="number"
-                  value={countPrevious}
+                  value={String(countPrevious)}
                 />
               </Field>
               <Field label="Counted quantity">
-                <input
+                <AppInput
                   aria-label="Counted quantity"
                   onChange={(event) => setCountCounted(event.target.value)}
                   step="0.01"
@@ -1030,42 +1027,34 @@ const Stock = () => {
           <form className="admin-form" onSubmit={submitLoss}>
             <div className="field-grid">
               <Field label="Item">
-                <select
+                <AppSelect
                   aria-label="Item"
-                  onChange={(event) => setLossItemId(event.target.value)}
-                  required
+                  isRequired
+                  onValueChange={setLossItemId}
+                  options={inventoryOptions}
+                  placeholder="Select item"
                   value={lossItemId}
-                >
-                  <option value="">Select item</option>
-                  {data.inventory.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
+                />
               </Field>
               <Field label="Type">
-                <select
+                <AppSelect
                   aria-label="Type"
-                  onChange={(event) =>
-                    setLossType(event.target.value as 'Loss' | 'Gain')
+                  onValueChange={(value) =>
+                    setLossType(value as 'Loss' | 'Gain')
                   }
+                  options={LOSS_TYPE_OPTIONS}
                   value={lossType}
-                >
-                  <option value="Loss">Loss</option>
-                  <option value="Gain">Gain</option>
-                </select>
+                />
               </Field>
               <Field label="Date">
-                <input
+                <AppDatePicker
                   aria-label="Date"
-                  onChange={(event) => setLossDate(event.target.value)}
-                  type="date"
+                  onValueChange={setLossDate}
                   value={lossDate}
                 />
               </Field>
               <Field label="Quantity">
-                <input
+                <AppInput
                   aria-label="Quantity"
                   min="0"
                   onChange={(event) => setLossQuantity(event.target.value)}
@@ -1075,7 +1064,7 @@ const Stock = () => {
                 />
               </Field>
               <Field label="Reason">
-                <input
+                <AppInput
                   aria-label="Reason"
                   onChange={(event) => setLossReason(event.target.value)}
                   type="text"

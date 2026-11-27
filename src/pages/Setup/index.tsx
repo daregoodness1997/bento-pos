@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 
 import { DashboardLayout } from 'layouts';
 import {
+  AppInput,
+  AppSelect,
   EmptyState,
   Field,
   FormActions,
@@ -45,8 +47,17 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]['id'];
 
+interface Props {
+  embedded?: boolean;
+}
+
 const DEPARTMENTS: Department[] = ['Restaurant', 'Bar', 'Snooker', 'Viewing'];
+const DEPARTMENT_OPTIONS = DEPARTMENTS.map((department) => ({
+  key: department,
+  label: department,
+}));
 const ROLES: Role[] = ['Owner', 'Manager', 'Cashier', 'Auditor'];
+const ROLE_OPTIONS = ROLES.map((role) => ({ key: role, label: role }));
 const DEFAULT_PASSWORD = 'bento1234';
 
 type AccessLevel = 'Viewer' | 'Contributor' | 'Editor';
@@ -158,7 +169,7 @@ const emptyUserDraft = (): UserDraft => ({
   pin: '',
 });
 
-const Setup = () => {
+const Setup = ({ embedded = false }: Props) => {
   const {
     data,
     currentUser,
@@ -640,21 +651,13 @@ const Setup = () => {
       key: 'role',
       label: 'Role',
       render: (user) => (
-        <select
+        <AppSelect
           aria-label={`Role for ${user.name}`}
-          className="field-input"
-          disabled={!canManageRoles}
-          onChange={(event) =>
-            handleRoleChange(user.id, event.target.value as Role)
-          }
+          isDisabled={!canManageRoles}
+          options={ROLE_OPTIONS}
           value={user.role}
-        >
-          {ROLES.map((role) => (
-            <option key={role} value={role}>
-              {role}
-            </option>
-          ))}
-        </select>
+          onValueChange={(value) => handleRoleChange(user.id, value as Role)}
+        />
       ),
     },
     {
@@ -717,12 +720,14 @@ const Setup = () => {
     { key: 'status', label: 'Status' },
   ];
 
-  return (
-    <DashboardLayout>
-      <PageHeader
-        title="Setup"
-        subtitle={`Get the register ready for service. ${completedSteps} of ${checklist.length} checks complete · ${dateKey()}.`}
-      />
+  const content = (
+    <>
+      {!embedded && (
+        <PageHeader
+          title="Setup"
+          subtitle={`Get the register ready for service. ${completedSteps} of ${checklist.length} checks complete · ${dateKey()}.`}
+        />
+      )}
 
       <div className="settings-layout">
         <nav className="settings-nav" aria-label="Setup sections">
@@ -861,8 +866,8 @@ const Setup = () => {
                 <form className="admin-form" onSubmit={handleBalanceSubmit}>
                   <div className="field-grid">
                     <Field label="Store name">
-                      <input
-                        className="field-input"
+                      <AppInput
+                        aria-label="Store name"
                         onChange={(event) =>
                           setBalanceField('storeName', event.target.value)
                         }
@@ -871,8 +876,8 @@ const Setup = () => {
                       />
                     </Field>
                     <Field label="Opening cash" hint="Notes and coins on hand">
-                      <input
-                        className="field-input"
+                      <AppInput
+                        aria-label="Opening cash"
                         min="0"
                         onChange={(event) =>
                           setBalanceField('openingCash', event.target.value)
@@ -883,8 +888,8 @@ const Setup = () => {
                       />
                     </Field>
                     <Field label="Opening bank" hint="Starting account balance">
-                      <input
-                        className="field-input"
+                      <AppInput
+                        aria-label="Opening bank"
                         min="0"
                         onChange={(event) =>
                           setBalanceField('openingBank', event.target.value)
@@ -895,8 +900,8 @@ const Setup = () => {
                       />
                     </Field>
                     <Field label="Opening customer debts">
-                      <input
-                        className="field-input"
+                      <AppInput
+                        aria-label="Opening customer debts"
                         min="0"
                         onChange={(event) =>
                           setBalanceField(
@@ -910,8 +915,8 @@ const Setup = () => {
                       />
                     </Field>
                     <Field label="Opening vendor debts">
-                      <input
-                        className="field-input"
+                      <AppInput
+                        aria-label="Opening vendor debts"
                         min="0"
                         onChange={(event) =>
                           setBalanceField(
@@ -970,8 +975,8 @@ const Setup = () => {
                   </h3>
                   <div className="field-grid">
                     <Field label="Name">
-                      <input
-                        className="field-input"
+                      <AppInput
+                        aria-label="Inventory item name"
                         onChange={(event) =>
                           setInventoryField('name', event.target.value)
                         }
@@ -980,26 +985,21 @@ const Setup = () => {
                       />
                     </Field>
                     <Field label="Department">
-                      <select
-                        className="field-input"
-                        onChange={(event) =>
+                      <AppSelect
+                        aria-label="Department"
+                        options={DEPARTMENT_OPTIONS}
+                        value={inventoryDraft.category}
+                        onValueChange={(value) =>
                           setInventoryDraft((current) => ({
                             ...current,
-                            category: event.target.value as Department,
+                            category: value as Department,
                           }))
                         }
-                        value={inventoryDraft.category}
-                      >
-                        {DEPARTMENTS.map((department) => (
-                          <option key={department} value={department}>
-                            {department}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </Field>
                     <Field label="Unit" hint="e.g. kg, pieces, litres">
-                      <input
-                        className="field-input"
+                      <AppInput
+                        aria-label="Unit"
                         onChange={(event) =>
                           setInventoryField('unit', event.target.value)
                         }
@@ -1008,8 +1008,8 @@ const Setup = () => {
                       />
                     </Field>
                     <Field label="Opening stock">
-                      <input
-                        className="field-input"
+                      <AppInput
+                        aria-label="Opening stock"
                         min="0"
                         onChange={(event) =>
                           setInventoryField('openingStock', event.target.value)
@@ -1020,8 +1020,8 @@ const Setup = () => {
                       />
                     </Field>
                     <Field label="Cost">
-                      <input
-                        className="field-input"
+                      <AppInput
+                        aria-label="Cost"
                         min="0"
                         onChange={(event) =>
                           setInventoryField('cost', event.target.value)
@@ -1032,8 +1032,8 @@ const Setup = () => {
                       />
                     </Field>
                     <Field label="Reorder level">
-                      <input
-                        className="field-input"
+                      <AppInput
+                        aria-label="Reorder level"
                         min="0"
                         onChange={(event) =>
                           setInventoryField('reorderLevel', event.target.value)
@@ -1044,8 +1044,8 @@ const Setup = () => {
                       />
                     </Field>
                     <Field label="Target level">
-                      <input
-                        className="field-input"
+                      <AppInput
+                        aria-label="Target level"
                         min="0"
                         onChange={(event) =>
                           setInventoryField('targetLevel', event.target.value)
@@ -1106,8 +1106,8 @@ const Setup = () => {
                   </h3>
                   <div className="field-grid">
                     <Field label="Name">
-                      <input
-                        className="field-input"
+                      <AppInput
+                        aria-label="Menu item name"
                         onChange={(event) =>
                           setMenuField('name', event.target.value)
                         }
@@ -1116,26 +1116,21 @@ const Setup = () => {
                       />
                     </Field>
                     <Field label="Department">
-                      <select
-                        className="field-input"
-                        onChange={(event) =>
+                      <AppSelect
+                        aria-label="Department"
+                        options={DEPARTMENT_OPTIONS}
+                        value={menuDraft.department}
+                        onValueChange={(value) =>
                           setMenuDraft((current) => ({
                             ...current,
-                            department: event.target.value as Department,
+                            department: value as Department,
                           }))
                         }
-                        value={menuDraft.department}
-                      >
-                        {DEPARTMENTS.map((department) => (
-                          <option key={department} value={department}>
-                            {department}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </Field>
                     <Field label="Price">
-                      <input
-                        className="field-input"
+                      <AppInput
+                        aria-label="Price"
                         min="0"
                         onChange={(event) =>
                           setMenuField('price', event.target.value)
@@ -1146,8 +1141,8 @@ const Setup = () => {
                       />
                     </Field>
                     <Field label="Prep time" hint="Minutes">
-                      <input
-                        className="field-input"
+                      <AppInput
+                        aria-label="Prep time"
                         min="0"
                         onChange={(event) =>
                           setMenuField('prepTime', event.target.value)
@@ -1158,8 +1153,8 @@ const Setup = () => {
                       />
                     </Field>
                     <Field label="Badge" hint="Optional menu label">
-                      <input
-                        className="field-input"
+                      <AppInput
+                        aria-label="Badge"
                         onChange={(event) =>
                           setMenuField('badge', event.target.value)
                         }
@@ -1193,26 +1188,25 @@ const Setup = () => {
                     {menuDraft.recipe.map((line, index) => (
                       <div className="field-grid" key={line.itemId || 'empty'}>
                         <Field label={`Ingredient ${index + 1}`}>
-                          <select
-                            className="field-input"
-                            onChange={(event) =>
-                              setRecipeLine(index, {
-                                itemId: event.target.value,
-                              })
-                            }
+                          <AppSelect
+                            aria-label={`Ingredient ${index + 1}`}
+                            options={[
+                              { key: '', label: 'Choose item' },
+                              ...data.inventory.map((item) => ({
+                                key: item.id,
+                                label: item.name,
+                              })),
+                            ]}
+                            placeholder="Choose item"
                             value={line.itemId}
-                          >
-                            <option value="">Choose item</option>
-                            {data.inventory.map((item) => (
-                              <option key={item.id} value={item.id}>
-                                {item.name}
-                              </option>
-                            ))}
-                          </select>
+                            onValueChange={(value) =>
+                              setRecipeLine(index, { itemId: value })
+                            }
+                          />
                         </Field>
                         <Field label="Quantity">
-                          <input
-                            className="field-input"
+                          <AppInput
+                            aria-label="Quantity"
                             min="0"
                             onChange={(event) =>
                               setRecipeLine(index, {
@@ -1280,8 +1274,8 @@ const Setup = () => {
                   <form className="admin-form" onSubmit={handleUserSubmit}>
                     <div className="field-grid">
                       <Field label="Name">
-                        <input
-                          className="field-input"
+                        <AppInput
+                          aria-label="User name"
                           onChange={(event) =>
                             setUserField('name', event.target.value)
                           }
@@ -1290,8 +1284,8 @@ const Setup = () => {
                         />
                       </Field>
                       <Field label="Email">
-                        <input
-                          className="field-input"
+                        <AppInput
+                          aria-label="User email"
                           onChange={(event) =>
                             setUserField('email', event.target.value)
                           }
@@ -1303,9 +1297,9 @@ const Setup = () => {
                         label="Password"
                         hint={`Default password: ${DEFAULT_PASSWORD}`}
                       >
-                        <input
-                          className="field-input"
-                          disabled
+                        <AppInput
+                          aria-label="Password"
+                          isDisabled
                           type="text"
                           value={DEFAULT_PASSWORD}
                         />
@@ -1314,26 +1308,21 @@ const Setup = () => {
                         label="Role"
                         hint={ROLE_ACCESS[userDraft.role].hint}
                       >
-                        <select
-                          className="field-input"
-                          onChange={(event) =>
+                        <AppSelect
+                          aria-label="Role"
+                          options={ROLE_OPTIONS}
+                          value={userDraft.role}
+                          onValueChange={(value) =>
                             setUserDraft((current) => ({
                               ...current,
-                              role: event.target.value as Role,
+                              role: value as Role,
                             }))
                           }
-                          value={userDraft.role}
-                        >
-                          {ROLES.map((role) => (
-                            <option key={role} value={role}>
-                              {role}
-                            </option>
-                          ))}
-                        </select>
+                        />
                       </Field>
                       <Field label="PIN" hint="Four digits used to unlock">
-                        <input
-                          className="field-input"
+                        <AppInput
+                          aria-label="PIN"
                           inputMode="numeric"
                           maxLength={4}
                           onChange={(event) =>
@@ -1419,8 +1408,14 @@ const Setup = () => {
           )}
         </div>
       </div>
-    </DashboardLayout>
+    </>
   );
+
+  return embedded ? content : <DashboardLayout>{content}</DashboardLayout>;
+};
+
+Setup.defaultProps = {
+  embedded: false,
 };
 
 export default Setup;

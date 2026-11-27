@@ -4,6 +4,17 @@
 
 @layer base {
   :root {
+    --surface-0: #0b1012;
+    --surface-1: #0e1517;
+    --surface-2: #11191b;
+    --surface-3: #182326;
+    --line: #1e2a2c;
+    --line-strong: #2b3a3c;
+    --text: #f3f1e9;
+    --text-muted: #8fa09b;
+    --accent: #ffb020;
+    --success: #54d6a0;
+    --danger: #ff6b5e;
     color-scheme: dark;
   }
 
@@ -375,37 +386,8 @@
   }
 
   .menu-search {
-    position: relative;
     flex: 1;
     max-width: 340px;
-  }
-
-  .menu-search input {
-    width: 100%;
-    height: 42px;
-    padding: 0 14px 0 40px;
-    border: 1px solid #1e2a2c;
-    border-radius: 12px;
-    background: #11191b;
-    color: #f3f1e9;
-    font-size: 13px;
-  }
-
-  .menu-search input::placeholder {
-    color: #6f817d;
-  }
-
-  .menu-search input:focus {
-    border-color: #ffb020;
-    outline: none;
-  }
-
-  .menu-search svg {
-    position: absolute;
-    top: 50%;
-    left: 14px;
-    color: #6f817d;
-    transform: translateY(-50%);
   }
 
   .category-tabs {
@@ -946,9 +928,9 @@
 
   .stat-panel {
     padding: 16px;
-    border: 1px solid #1e2a2c;
-    border-radius: 16px;
-    background: #11191b;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: var(--surface-2);
   }
 
   .stat-panel__label {
@@ -1002,9 +984,9 @@
 
   .panel {
     padding: 18px;
-    border: 1px solid #1e2a2c;
-    border-radius: 16px;
-    background: #11191b;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: var(--surface-2);
   }
 
   .panel-title {
@@ -1098,9 +1080,9 @@
 
   .table-wrap {
     overflow-x: auto;
-    border: 1px solid #1e2a2c;
-    border-radius: 16px;
-    background: #11191b;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: var(--surface-2);
   }
 
   .data-table {
@@ -1162,9 +1144,9 @@
     gap: 4px;
     align-self: start;
     padding: 10px;
-    border: 1px solid #1e2a2c;
-    border-radius: 16px;
-    background: #11191b;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: var(--surface-2);
   }
 
   .settings-nav button {
@@ -1195,9 +1177,9 @@
 
   .settings-card {
     padding: 20px;
-    border: 1px solid #1e2a2c;
-    border-radius: 16px;
-    background: #11191b;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: var(--surface-2);
   }
 
   .field-grid {
@@ -1216,22 +1198,6 @@
   .field-label > span {
     display: block;
     margin-bottom: 7px;
-  }
-
-  .field-input {
-    width: 100%;
-    height: 42px;
-    padding: 0 12px;
-    border: 1px solid #2c3b3d;
-    border-radius: 10px;
-    background: #0e1517;
-    color: #f3f1e9;
-    font-size: 13px;
-  }
-
-  .field-input:focus {
-    border-color: #ffb020;
-    outline: none;
   }
 
   .setting-row {
@@ -1267,28 +1233,37 @@
   .secondary-button {
     height: 42px;
     padding: 0 18px;
-    border: 1px solid #2c3b3d;
-    border-radius: 10px;
-    background: transparent;
-    color: #f3f1e9;
+    border: 1px solid var(--line-strong);
+    border-radius: 12px;
+    background: var(--surface-1);
+    color: var(--text);
     font-size: 13px;
     font-weight: 500;
+    transition: border-color 140ms ease, background-color 140ms ease,
+      color 140ms ease;
   }
 
   .secondary-button:hover {
-    border-color: #ffb020;
-    color: #ffb020;
+    border-color: var(--accent);
+    background: rgba(255, 176, 32, 0.08);
+    color: var(--accent);
   }
 
   .primary-button {
     height: 42px;
     padding: 0 20px;
     border: 0;
-    border-radius: 10px;
-    background: #ffb020;
-    color: #0b1012;
+    border-radius: 12px;
+    background: var(--accent);
+    color: var(--surface-0);
     font-size: 13px;
     font-weight: 700;
+    transition: filter 140ms ease, transform 140ms ease;
+  }
+
+  .primary-button:hover {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
   }
 
   .primary-button:disabled {
@@ -1437,26 +1412,6 @@
 
   .auth-input-wrap {
     position: relative;
-  }
-
-  .auth-field input {
-    width: 100%;
-    height: 46px;
-    padding: 0 44px 0 14px;
-    border: 1px solid #2c3b3d;
-    border-radius: 12px;
-    background: #11191b;
-    color: #f3f1e9;
-    font-size: 13px;
-  }
-
-  .auth-field input::placeholder {
-    color: #6f817d;
-  }
-
-  .auth-field input:focus {
-    border-color: #ffb020;
-    outline: none;
   }
 
   .auth-toggle {

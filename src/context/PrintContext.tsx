@@ -33,8 +33,6 @@ export interface NetworkPrinterTarget {
 }
 
 interface PrintContextValue {
-  autoPrint: boolean;
-  setAutoPrint: (value: boolean) => void;
   networkPrinter: NetworkPrinterTarget | null;
   setNetworkPrinter: (target: NetworkPrinterTarget | null) => void;
   thermalTransport: ThermalTransport;
@@ -53,19 +51,10 @@ interface Props {
   children: React.ReactNode;
 }
 
-const AUTO_PRINT_KEY = 'bento-auto-print';
 const NETWORK_PRINTER_KEY = 'bento-network-printer';
 const THERMAL_TRANSPORT_KEY = 'bento-thermal-transport';
 
 const PrintContext = createContext<PrintContextValue | undefined>(undefined);
-
-const readAutoPrint = () => {
-  try {
-    return window.localStorage.getItem(AUTO_PRINT_KEY) !== 'false';
-  } catch {
-    return true;
-  }
-};
 
 const readNetworkPrinter = (): NetworkPrinterTarget | null => {
   try {
@@ -140,23 +129,12 @@ const errorMessage = (error: unknown, fallback: string) =>
 export const PrintProvider = ({ children }: Props) => {
   const [receipt, setReceipt] = useState<OrderRecord | null>(null);
   const [status, setStatus] = useState('');
-  const [autoPrintState, setAutoPrintState] = useState(readAutoPrint);
   const [networkPrinterState, setNetworkPrinterState] =
     useState(readNetworkPrinter);
   const [thermalTransportState, setThermalTransportState] =
     useState(readThermalTransport);
   const [thermalPortReady, setThermalPortReady] = useState(hasThermalPrinter);
   const [usbReady, setUsbReady] = useState(hasUsbThermalPrinter);
-
-  const setAutoPrint = useCallback((value: boolean) => {
-    setAutoPrintState(value);
-
-    try {
-      window.localStorage.setItem(AUTO_PRINT_KEY, String(value));
-    } catch (error) {
-      setStatus(errorMessage(error, 'Print setting could not be saved.'));
-    }
-  }, []);
 
   const setNetworkPrinter = useCallback(
     (target: NetworkPrinterTarget | null) => {
@@ -284,8 +262,6 @@ export const PrintProvider = ({ children }: Props) => {
 
   const value = useMemo<PrintContextValue>(
     () => ({
-      autoPrint: autoPrintState,
-      setAutoPrint,
       networkPrinter: networkPrinterState,
       setNetworkPrinter,
       thermalTransport: thermalTransportState,
@@ -305,8 +281,6 @@ export const PrintProvider = ({ children }: Props) => {
       connectThermal,
     }),
     [
-      autoPrintState,
-      setAutoPrint,
       networkPrinterState,
       setNetworkPrinter,
       thermalTransportState,

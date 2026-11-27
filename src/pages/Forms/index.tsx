@@ -4,6 +4,10 @@ import { DashboardLayout } from 'layouts';
 import { useStore } from 'context';
 import type { Permission } from 'context';
 import {
+  AppDatePicker,
+  AppInput,
+  AppSelect,
+  AppTextarea,
   EmptyState,
   Field,
   FormActions,
@@ -152,6 +156,30 @@ const EXPENSE_CATEGORIES = [
   'Maintenance',
   'Staff',
   'Other',
+];
+const DEPARTMENT_OPTIONS = DEPARTMENTS.map((department) => ({
+  key: department,
+  label: department,
+}));
+const ORDER_TYPE_OPTIONS = ORDER_TYPES.map((orderType) => ({
+  key: orderType,
+  label: orderType,
+}));
+const TENDER_OPTIONS = TENDERS.map((tender) => ({
+  key: tender,
+  label: tender,
+}));
+const PAY_METHOD_OPTIONS = PAY_METHODS.map((method) => ({
+  key: method,
+  label: method,
+}));
+const EXPENSE_CATEGORY_OPTIONS = EXPENSE_CATEGORIES.map((category) => ({
+  key: category,
+  label: category,
+}));
+const LOSS_TYPE_OPTIONS = [
+  { key: 'Loss', label: 'Loss' },
+  { key: 'Gain', label: 'Gain' },
 ];
 const MAX_SALE_LINES = 6;
 
@@ -1148,6 +1176,54 @@ const Forms = () => {
       />
     );
 
+    const walkInCustomerOptions = [
+      { key: '', label: 'Walk-in customer' },
+      ...data.customers.map((customer) => ({
+        key: customer.id,
+        label: customer.name,
+      })),
+    ];
+    const customerOptions = [
+      { key: '', label: 'Select a customer' },
+      ...data.customers.map((customer) => ({
+        key: customer.id,
+        label: customer.name,
+      })),
+    ];
+    const menuItemOptions = [
+      { key: '', label: 'Select a menu item' },
+      ...data.menu.map((item) => ({
+        key: item.id,
+        label: `${item.name} · ${formatNaira(item.price)}`,
+      })),
+    ];
+    const creditSaleOptions = [
+      { key: '', label: 'Apply to oldest credit sale' },
+      ...(form.debtSaleId &&
+      !creditRowsForDebt.some((row) => row.sale.id === form.debtSaleId)
+        ? [{ key: form.debtSaleId, label: form.debtSaleId }]
+        : []),
+      ...creditRowsForDebt.map((row) => ({
+        key: row.sale.id,
+        label: `${row.sale.id} · ${
+          data.customers.find((customer) => customer.id === row.sale.customerId)
+            ?.name ?? 'Walk-in customer'
+        } · ${formatNaira(row.outstanding)}`,
+      })),
+    ];
+    const vendorOptions = [
+      { key: '', label: 'Select a vendor' },
+      ...data.vendors.map((vendor) => ({ key: vendor.id, label: vendor.name })),
+    ];
+    const linkedInventoryOptions = [
+      { key: '', label: 'No linked inventory item' },
+      ...data.inventory.map((item) => ({ key: item.id, label: item.name })),
+    ];
+    const inventoryOptions = [
+      { key: '', label: 'Select an inventory item' },
+      ...data.inventory.map((item) => ({ key: item.id, label: item.name })),
+    ];
+
     switch (activeTab) {
       case 'sale':
         return (
@@ -1158,48 +1234,31 @@ const Forms = () => {
             <form className="admin-form" onSubmit={handleSubmit}>
               <div className="field-grid">
                 <Field label="Department">
-                  <select
-                    onChange={(event) =>
-                      patchForm({
-                        department: event.target.value as Department,
-                      })
+                  <AppSelect
+                    onValueChange={(value) =>
+                      patchForm({ department: value as Department })
                     }
+                    options={DEPARTMENT_OPTIONS}
                     value={form.department}
-                  >
-                    {DEPARTMENTS.map((department) => (
-                      <option key={department} value={department}>
-                        {department}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </Field>
                 <Field label="Order type">
-                  <select
-                    onChange={(event) =>
-                      patchForm({ orderType: event.target.value as OrderType })
+                  <AppSelect
+                    onValueChange={(value) =>
+                      patchForm({ orderType: value as OrderType })
                     }
+                    options={ORDER_TYPE_OPTIONS}
                     value={form.orderType}
-                  >
-                    {ORDER_TYPES.map((orderType) => (
-                      <option key={orderType} value={orderType}>
-                        {orderType}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </Field>
                 <Field label="Tender">
-                  <select
-                    onChange={(event) =>
-                      patchForm({ tender: event.target.value as Tender })
+                  <AppSelect
+                    onValueChange={(value) =>
+                      patchForm({ tender: value as Tender })
                     }
+                    options={TENDER_OPTIONS}
                     value={form.tender}
-                  >
-                    {TENDERS.map((tender) => (
-                      <option key={tender} value={tender}>
-                        {tender}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </Field>
                 <Field
                   label="Customer"
@@ -1209,31 +1268,21 @@ const Forms = () => {
                       : 'Optional for paid sales.'
                   }
                 >
-                  <select
-                    onChange={(event) =>
-                      patchForm({ customerId: event.target.value })
-                    }
+                  <AppSelect
+                    onValueChange={(value) => patchForm({ customerId: value })}
+                    options={walkInCustomerOptions}
+                    placeholder="Walk-in customer"
                     value={form.customerId}
-                  >
-                    <option value="">Walk-in customer</option>
-                    {data.customers.map((customer) => (
-                      <option key={customer.id} value={customer.id}>
-                        {customer.name}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </Field>
                 <Field label="Date">
-                  <input
-                    onChange={(event) =>
-                      patchForm({ date: event.target.value })
-                    }
-                    type="date"
+                  <AppDatePicker
+                    onValueChange={(value) => patchForm({ date: value })}
                     value={form.date}
                   />
                 </Field>
                 <Field label="Time">
-                  <input
+                  <AppInput
                     onChange={(event) =>
                       patchForm({ time: event.target.value })
                     }
@@ -1245,20 +1294,15 @@ const Forms = () => {
               <div className="form-card">
                 <div className="field-grid">
                   <Field label="Menu item">
-                    <select
-                      onChange={(event) => setMenuSelection(event.target.value)}
+                    <AppSelect
+                      onValueChange={setMenuSelection}
+                      options={menuItemOptions}
+                      placeholder="Select a menu item"
                       value={menuSelection}
-                    >
-                      <option value="">Select a menu item</option>
-                      {data.menu.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.name} · {formatNaira(item.price)}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </Field>
                   <Field label="Quantity" hint={salePortionHint}>
-                    <input
+                    <AppInput
                       min="1"
                       onChange={(event) => setMenuQuantity(event.target.value)}
                       type="number"
@@ -1287,15 +1331,15 @@ const Forms = () => {
                         </div>
                       </div>
                       <div className="stock-item__actions">
-                        <input
+                        <AppInput
                           aria-label={`Quantity for ${line.name}`}
-                          className="field-input"
+                          classNames={{ base: 'w-20' }}
                           min="1"
                           onChange={(event) =>
                             updateSaleLine(line.key, event.target.value)
                           }
                           type="number"
-                          value={line.quantity}
+                          value={String(line.quantity)}
                         />
                         <strong className="tabular">
                           {formatNaira(
@@ -1342,19 +1386,14 @@ const Forms = () => {
             <form className="admin-form" onSubmit={handleSubmit}>
               <div className="field-grid">
                 <Field label="Customer" hint="Required">
-                  <select
-                    onChange={(event) =>
-                      patchForm({ debtCustomerId: event.target.value })
+                  <AppSelect
+                    onValueChange={(value) =>
+                      patchForm({ debtCustomerId: value })
                     }
+                    options={customerOptions}
+                    placeholder="Select a customer"
                     value={form.debtCustomerId}
-                  >
-                    <option value="">Select a customer</option>
-                    {data.customers.map((customer) => (
-                      <option key={customer.id} value={customer.id}>
-                        {customer.name}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </Field>
                 <Field
                   label="Sale"
@@ -1364,34 +1403,15 @@ const Forms = () => {
                       : 'Optional'
                   }
                 >
-                  <select
-                    onChange={(event) =>
-                      patchForm({ debtSaleId: event.target.value })
-                    }
+                  <AppSelect
+                    onValueChange={(value) => patchForm({ debtSaleId: value })}
+                    options={creditSaleOptions}
+                    placeholder="Apply to oldest credit sale"
                     value={form.debtSaleId}
-                  >
-                    <option value="">Apply to oldest credit sale</option>
-                    {form.debtSaleId &&
-                      !creditRowsForDebt.some(
-                        (row) => row.sale.id === form.debtSaleId,
-                      ) && (
-                        <option value={form.debtSaleId}>
-                          {form.debtSaleId}
-                        </option>
-                      )}
-                    {creditRowsForDebt.map((row) => (
-                      <option key={row.sale.id} value={row.sale.id}>
-                        {row.sale.id} ·{' '}
-                        {data.customers.find(
-                          (customer) => customer.id === row.sale.customerId,
-                        )?.name ?? 'Walk-in customer'}{' '}
-                        · {formatNaira(row.outstanding)}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </Field>
                 <Field label="Amount">
-                  <input
+                  <AppInput
                     min="0"
                     onChange={(event) =>
                       patchForm({ debtAmount: event.target.value })
@@ -1402,21 +1422,16 @@ const Forms = () => {
                   />
                 </Field>
                 <Field label="Method">
-                  <select
-                    onChange={(event) =>
-                      patchForm({ debtMethod: event.target.value as PayMethod })
+                  <AppSelect
+                    onValueChange={(value) =>
+                      patchForm({ debtMethod: value as PayMethod })
                     }
+                    options={PAY_METHOD_OPTIONS}
                     value={form.debtMethod}
-                  >
-                    {PAY_METHODS.map((method) => (
-                      <option key={method} value={method}>
-                        {method}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </Field>
                 <Field label="Reference">
-                  <input
+                  <AppInput
                     onChange={(event) =>
                       patchForm({ debtReference: event.target.value })
                     }
@@ -1424,11 +1439,8 @@ const Forms = () => {
                   />
                 </Field>
                 <Field label="Date">
-                  <input
-                    onChange={(event) =>
-                      patchForm({ date: event.target.value })
-                    }
-                    type="date"
+                  <AppDatePicker
+                    onValueChange={(value) => patchForm({ date: value })}
                     value={form.date}
                   />
                 </Field>
@@ -1447,43 +1459,33 @@ const Forms = () => {
             <form className="admin-form" onSubmit={handleSubmit}>
               <div className="field-grid">
                 <Field label="Vendor">
-                  <select
-                    onChange={(event) =>
-                      patchForm({ deliveryVendorId: event.target.value })
+                  <AppSelect
+                    onValueChange={(value) =>
+                      patchForm({ deliveryVendorId: value })
                     }
+                    options={vendorOptions}
+                    placeholder="Select a vendor"
                     value={form.deliveryVendorId}
-                  >
-                    <option value="">Select a vendor</option>
-                    {data.vendors.map((vendor) => (
-                      <option key={vendor.id} value={vendor.id}>
-                        {vendor.name}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </Field>
                 <Field label="Inventory item">
-                  <select
-                    onChange={(event) => {
+                  <AppSelect
+                    onValueChange={(value) => {
                       const item = data.inventory.find(
-                        (entry) => entry.id === event.target.value,
+                        (entry) => entry.id === value,
                       );
                       patchForm({
-                        deliveryInventoryItemId: event.target.value,
+                        deliveryInventoryItemId: value,
                         itemName: item?.name ?? form.itemName,
                       });
                     }}
+                    options={linkedInventoryOptions}
+                    placeholder="No linked inventory item"
                     value={form.deliveryInventoryItemId}
-                  >
-                    <option value="">No linked inventory item</option>
-                    {data.inventory.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </Field>
                 <Field label="Item name">
-                  <input
+                  <AppInput
                     onChange={(event) =>
                       patchForm({ itemName: event.target.value })
                     }
@@ -1491,7 +1493,7 @@ const Forms = () => {
                   />
                 </Field>
                 <Field label="Quantity">
-                  <input
+                  <AppInput
                     min="0"
                     onChange={(event) =>
                       patchForm({ quantity: event.target.value })
@@ -1502,7 +1504,7 @@ const Forms = () => {
                   />
                 </Field>
                 <Field label="Unit cost">
-                  <input
+                  <AppInput
                     min="0"
                     onChange={(event) =>
                       patchForm({ unitCost: event.target.value })
@@ -1513,7 +1515,7 @@ const Forms = () => {
                   />
                 </Field>
                 <Field label="Amount paid now">
-                  <input
+                  <AppInput
                     min="0"
                     onChange={(event) =>
                       patchForm({ amountPaid: event.target.value })
@@ -1524,16 +1526,13 @@ const Forms = () => {
                   />
                 </Field>
                 <Field label="Pay-by date">
-                  <input
-                    onChange={(event) =>
-                      patchForm({ payByDate: event.target.value })
-                    }
-                    type="date"
+                  <AppDatePicker
+                    onValueChange={(value) => patchForm({ payByDate: value })}
                     value={form.payByDate}
                   />
                 </Field>
                 <Field label="Invoice">
-                  <input
+                  <AppInput
                     onChange={(event) =>
                       patchForm({ invoice: event.target.value })
                     }
@@ -1541,11 +1540,8 @@ const Forms = () => {
                   />
                 </Field>
                 <Field label="Delivery date">
-                  <input
-                    onChange={(event) =>
-                      patchForm({ date: event.target.value })
-                    }
-                    type="date"
+                  <AppDatePicker
+                    onValueChange={(value) => patchForm({ date: value })}
                     value={form.date}
                   />
                 </Field>
@@ -1582,22 +1578,17 @@ const Forms = () => {
             <form className="admin-form" onSubmit={handleSubmit}>
               <div className="field-grid">
                 <Field label="Vendor">
-                  <select
-                    onChange={(event) =>
-                      patchForm({ vendorPaymentVendorId: event.target.value })
+                  <AppSelect
+                    onValueChange={(value) =>
+                      patchForm({ vendorPaymentVendorId: value })
                     }
+                    options={vendorOptions}
+                    placeholder="Select a vendor"
                     value={form.vendorPaymentVendorId}
-                  >
-                    <option value="">Select a vendor</option>
-                    {data.vendors.map((vendor) => (
-                      <option key={vendor.id} value={vendor.id}>
-                        {vendor.name}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </Field>
                 <Field label="Amount">
-                  <input
+                  <AppInput
                     min="0"
                     onChange={(event) =>
                       patchForm({ vendorPaymentAmount: event.target.value })
@@ -1608,23 +1599,16 @@ const Forms = () => {
                   />
                 </Field>
                 <Field label="Method">
-                  <select
-                    onChange={(event) =>
-                      patchForm({
-                        vendorPaymentMethod: event.target.value as PayMethod,
-                      })
+                  <AppSelect
+                    onValueChange={(value) =>
+                      patchForm({ vendorPaymentMethod: value as PayMethod })
                     }
+                    options={PAY_METHOD_OPTIONS}
                     value={form.vendorPaymentMethod}
-                  >
-                    {PAY_METHODS.map((method) => (
-                      <option key={method} value={method}>
-                        {method}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </Field>
                 <Field label="Reference">
-                  <input
+                  <AppInput
                     onChange={(event) =>
                       patchForm({ vendorPaymentReference: event.target.value })
                     }
@@ -1632,11 +1616,8 @@ const Forms = () => {
                   />
                 </Field>
                 <Field label="Date">
-                  <input
-                    onChange={(event) =>
-                      patchForm({ date: event.target.value })
-                    }
-                    type="date"
+                  <AppDatePicker
+                    onValueChange={(value) => patchForm({ date: value })}
                     value={form.date}
                   />
                 </Field>
@@ -1655,21 +1636,16 @@ const Forms = () => {
             <form className="admin-form" onSubmit={handleSubmit}>
               <div className="field-grid">
                 <Field label="Category">
-                  <select
-                    onChange={(event) =>
-                      patchForm({ expenseCategory: event.target.value })
+                  <AppSelect
+                    onValueChange={(value) =>
+                      patchForm({ expenseCategory: value })
                     }
+                    options={EXPENSE_CATEGORY_OPTIONS}
                     value={form.expenseCategory}
-                  >
-                    {EXPENSE_CATEGORIES.map((category) => (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </Field>
                 <Field label="Description">
-                  <input
+                  <AppInput
                     onChange={(event) =>
                       patchForm({ expenseDescription: event.target.value })
                     }
@@ -1677,7 +1653,7 @@ const Forms = () => {
                   />
                 </Field>
                 <Field label="Amount">
-                  <input
+                  <AppInput
                     min="0"
                     onChange={(event) =>
                       patchForm({ expenseAmount: event.target.value })
@@ -1688,27 +1664,17 @@ const Forms = () => {
                   />
                 </Field>
                 <Field label="Method">
-                  <select
-                    onChange={(event) =>
-                      patchForm({
-                        expenseMethod: event.target.value as PayMethod,
-                      })
+                  <AppSelect
+                    onValueChange={(value) =>
+                      patchForm({ expenseMethod: value as PayMethod })
                     }
+                    options={PAY_METHOD_OPTIONS}
                     value={form.expenseMethod}
-                  >
-                    {PAY_METHODS.map((method) => (
-                      <option key={method} value={method}>
-                        {method}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </Field>
                 <Field label="Date">
-                  <input
-                    onChange={(event) =>
-                      patchForm({ date: event.target.value })
-                    }
-                    type="date"
+                  <AppDatePicker
+                    onValueChange={(value) => patchForm({ date: value })}
                     value={form.date}
                   />
                 </Field>
@@ -1727,35 +1693,24 @@ const Forms = () => {
             <form className="admin-form" onSubmit={handleSubmit}>
               <div className="field-grid">
                 <Field label="Item">
-                  <select
-                    onChange={(event) =>
-                      patchForm({ lossItemId: event.target.value })
-                    }
+                  <AppSelect
+                    onValueChange={(value) => patchForm({ lossItemId: value })}
+                    options={inventoryOptions}
+                    placeholder="Select an inventory item"
                     value={form.lossItemId}
-                  >
-                    <option value="">Select an inventory item</option>
-                    {data.inventory.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </Field>
                 <Field label="Type">
-                  <select
-                    onChange={(event) =>
-                      patchForm({
-                        lossType: event.target.value as 'Loss' | 'Gain',
-                      })
+                  <AppSelect
+                    onValueChange={(value) =>
+                      patchForm({ lossType: value as 'Loss' | 'Gain' })
                     }
+                    options={LOSS_TYPE_OPTIONS}
                     value={form.lossType}
-                  >
-                    <option value="Loss">Loss</option>
-                    <option value="Gain">Gain</option>
-                  </select>
+                  />
                 </Field>
                 <Field label="Quantity">
-                  <input
+                  <AppInput
                     min="0"
                     onChange={(event) =>
                       patchForm({ lossQuantity: event.target.value })
@@ -1766,7 +1721,7 @@ const Forms = () => {
                   />
                 </Field>
                 <Field label="Reason">
-                  <input
+                  <AppInput
                     onChange={(event) =>
                       patchForm({ lossReason: event.target.value })
                     }
@@ -1774,11 +1729,8 @@ const Forms = () => {
                   />
                 </Field>
                 <Field label="Date">
-                  <input
-                    onChange={(event) =>
-                      patchForm({ date: event.target.value })
-                    }
-                    type="date"
+                  <AppDatePicker
+                    onValueChange={(value) => patchForm({ date: value })}
                     value={form.date}
                   />
                 </Field>
@@ -1806,22 +1758,15 @@ const Forms = () => {
             <form className="admin-form" onSubmit={handleSubmit}>
               <div className="field-grid">
                 <Field label="Item">
-                  <select
-                    onChange={(event) =>
-                      patchForm({ stockItemId: event.target.value })
-                    }
+                  <AppSelect
+                    onValueChange={(value) => patchForm({ stockItemId: value })}
+                    options={inventoryOptions}
+                    placeholder="Select an inventory item"
                     value={form.stockItemId}
-                  >
-                    <option value="">Select an inventory item</option>
-                    {data.inventory.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </Field>
                 <Field label="Counted quantity">
-                  <input
+                  <AppInput
                     min="0"
                     onChange={(event) =>
                       patchForm({ countedQuantity: event.target.value })
@@ -1832,11 +1777,8 @@ const Forms = () => {
                   />
                 </Field>
                 <Field label="Date">
-                  <input
-                    onChange={(event) =>
-                      patchForm({ date: event.target.value })
-                    }
-                    type="date"
+                  <AppDatePicker
+                    onValueChange={(value) => patchForm({ date: value })}
                     value={form.date}
                   />
                 </Field>
@@ -1869,16 +1811,13 @@ const Forms = () => {
             <form className="admin-form" onSubmit={handleSubmit}>
               <div className="field-grid">
                 <Field label="Date">
-                  <input
-                    onChange={(event) =>
-                      patchForm({ date: event.target.value })
-                    }
-                    type="date"
+                  <AppDatePicker
+                    onValueChange={(value) => patchForm({ date: value })}
                     value={form.date}
                   />
                 </Field>
                 <Field label="Cash counted">
-                  <input
+                  <AppInput
                     min="0"
                     onChange={(event) =>
                       patchForm({ countedCash: event.target.value })
@@ -1889,7 +1828,7 @@ const Forms = () => {
                   />
                 </Field>
                 <Field label="Note">
-                  <textarea
+                  <AppTextarea
                     onChange={(event) =>
                       patchForm({ closeNote: event.target.value })
                     }
@@ -1933,7 +1872,7 @@ const Forms = () => {
             <form className="admin-form" onSubmit={handleSubmit}>
               <div className="field-grid">
                 <Field label="Name">
-                  <input
+                  <AppInput
                     onChange={(event) =>
                       patchForm({ customerName: event.target.value })
                     }
@@ -1941,7 +1880,7 @@ const Forms = () => {
                   />
                 </Field>
                 <Field label="Phone">
-                  <input
+                  <AppInput
                     onChange={(event) =>
                       patchForm({ customerPhone: event.target.value })
                     }

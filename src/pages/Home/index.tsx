@@ -4,6 +4,9 @@ import { useNavigate } from 'react-router-dom';
 
 import { DashboardLayout } from 'layouts';
 import {
+  AppDatePicker,
+  AppInput,
+  AppSelect,
   EmptyState,
   Field,
   FormActions,
@@ -376,16 +379,16 @@ const Home = () => {
               >
                 <div className="field-grid">
                   <Field label="Name">
-                    <input
+                    <AppInput
                       aria-label="Customer name"
+                      isRequired
                       onChange={(event) => setCustomerName(event.target.value)}
-                      required
                       type="text"
                       value={customerName}
                     />
                   </Field>
                   <Field label="Phone">
-                    <input
+                    <AppInput
                       aria-label="Customer phone"
                       onChange={(event) => setCustomerPhone(event.target.value)}
                       type="tel"
@@ -405,47 +408,41 @@ const Home = () => {
               <form className="form-card admin-form" onSubmit={handleCollect}>
                 <div className="field-grid">
                   <Field label="Customer">
-                    <select
+                    <AppSelect
                       aria-label="Customer"
-                      onChange={(event) => setCustomerId(event.target.value)}
-                      required
+                      isRequired
+                      onValueChange={setCustomerId}
+                      options={data.customers.map((customer) => ({
+                        key: customer.id,
+                        label: customer.name,
+                      }))}
                       value={customerId}
-                    >
-                      {data.customers.map((customer) => (
-                        <option key={customer.id} value={customer.id}>
-                          {customer.name}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </Field>
                   <Field label="Amount">
-                    <input
+                    <AppInput
                       aria-label="Payment amount"
+                      isRequired
                       min="0.01"
                       onChange={(event) => setAmount(event.target.value)}
-                      required
                       step="0.01"
                       type="number"
                       value={amount}
                     />
                   </Field>
                   <Field label="Method">
-                    <select
+                    <AppSelect
                       aria-label="Payment method"
-                      onChange={(event) =>
-                        setMethod(event.target.value as PayMethod)
-                      }
+                      onValueChange={(value) => setMethod(value as PayMethod)}
+                      options={PAY_METHODS.map((entry) => ({
+                        key: entry,
+                        label: entry,
+                      }))}
                       value={method}
-                    >
-                      {PAY_METHODS.map((entry) => (
-                        <option key={entry} value={entry}>
-                          {entry}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </Field>
                   <Field label="Reference">
-                    <input
+                    <AppInput
                       aria-label="Payment reference"
                       onChange={(event) => setReference(event.target.value)}
                       type="text"
@@ -453,11 +450,10 @@ const Home = () => {
                     />
                   </Field>
                   <Field label="Date">
-                    <input
+                    <AppDatePicker
                       aria-label="Payment date"
-                      onChange={(event) => setDate(event.target.value)}
-                      required
-                      type="date"
+                      isRequired
+                      onValueChange={setDate}
                       value={date}
                     />
                   </Field>

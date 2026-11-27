@@ -3,6 +3,10 @@ import type { FormEvent } from 'react';
 
 import { DashboardLayout } from 'layouts';
 import {
+  AppDatePicker,
+  AppInput,
+  AppSelect,
+  AppTextarea,
   EmptyState,
   Field,
   FormActions,
@@ -54,6 +58,12 @@ const TABS: TabItem[] = [
   { id: 'monthly', label: 'Monthly' },
   { id: 'export', label: 'Export' },
 ];
+
+const recentMonthOptions = (today: string, recent: string[]) => {
+  const current = today.slice(0, 7);
+  const months = recent.includes(current) ? recent : [current, ...recent];
+  return months.map((entry) => ({ key: entry, label: entry }));
+};
 
 const roundAmount = (value: number) => Math.round(value * 100) / 100;
 
@@ -388,11 +398,7 @@ const Reports = () => {
           >
             <div className="field-grid">
               <Field label="Date">
-                <input
-                  onChange={(event) => handleDateChange(event.target.value)}
-                  type="date"
-                  value={date}
-                />
+                <AppDatePicker onValueChange={handleDateChange} value={date} />
               </Field>
             </div>
           </Panel>
@@ -631,14 +637,13 @@ const Reports = () => {
               <form className="admin-form" onSubmit={handleAddClose}>
                 <div className="field-grid">
                   <Field hint="Must match the report date." label="Date">
-                    <input
-                      onChange={(event) => handleDateChange(event.target.value)}
-                      type="date"
+                    <AppDatePicker
+                      onValueChange={handleDateChange}
                       value={date}
                     />
                   </Field>
                   <Field label="Cash counted">
-                    <input
+                    <AppInput
                       min="0"
                       onChange={(event) => setCountedCash(event.target.value)}
                       step="0.01"
@@ -647,7 +652,7 @@ const Reports = () => {
                     />
                   </Field>
                   <Field label="Note">
-                    <textarea
+                    <AppTextarea
                       onChange={(event) => setNote(event.target.value)}
                       value={note}
                     />
@@ -696,7 +701,7 @@ const Reports = () => {
               <form className="admin-form form-card" onSubmit={handleSaveEdit}>
                 <div className="field-grid">
                   <Field label="Cash counted">
-                    <input
+                    <AppInput
                       min="0"
                       onChange={(event) =>
                         setEditCountedCash(event.target.value)
@@ -707,7 +712,7 @@ const Reports = () => {
                     />
                   </Field>
                   <Field label="Note">
-                    <textarea
+                    <AppTextarea
                       onChange={(event) => setEditNote(event.target.value)}
                       value={editNote}
                     />
@@ -762,9 +767,9 @@ const Reports = () => {
           >
             <div className="field-grid">
               <Field label="Month">
-                <input
-                  onChange={(event) => setMonth(event.target.value)}
-                  type="month"
+                <AppSelect
+                  onValueChange={setMonth}
+                  options={recentMonthOptions(today, monthReport.recentMonths)}
                   value={month}
                 />
               </Field>

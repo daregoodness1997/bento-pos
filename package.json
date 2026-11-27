@@ -87,15 +87,19 @@
     }
   },
   "dependencies": {
-    "@nextui-org/react": "^2.2.10",
+    "@internationalized/date": "^3.12.4",
+    "@nextui-org/react": "^2.6.11",
     "electron-debug": "^3.2.0",
     "electron-log": "^4.4.8",
     "electron-updater": "^6.1.4",
-    "framer-motion": "^11.0.20",
+    "framer-motion": "^11.18.2",
     "next-themes": "^0.3.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.22.3"
+  },
+  "resolutions": {
+    "@internationalized/date": "3.12.4"
   },
   "devDependencies": {
     "@electron/notarize": "^2.1.0",

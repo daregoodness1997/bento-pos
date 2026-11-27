@@ -2,7 +2,7 @@ import { memo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { EyeFilledIcon, EyeSlashFilledIcon } from 'components';
+import { AppInput, EyeFilledIcon, EyeSlashFilledIcon } from 'components';
 import { DEMO_EMAIL, DEMO_PASSWORD, useAuth } from 'context';
 import { formatNaira } from 'utils/format';
 
@@ -82,15 +82,20 @@ const Auth = () => {
             <label htmlFor="email">
               <span>Email</span>
               <div className="auth-input-wrap">
-                <input
+                <AppInput
+                  aria-label="Email"
                   autoComplete="email"
+                  classNames={{
+                    inputWrapper:
+                      'h-[46px] min-h-[46px] border-[#2c3b3d] bg-[#11191b] data-[hover=true]:border-[#ffb020]',
+                  }}
                   id="email"
+                  isRequired
                   onChange={(event) => {
                     setEmail(event.target.value);
                     setError('');
                   }}
                   placeholder="you@bento.pos"
-                  required
                   type="email"
                   value={email}
                 />
@@ -102,15 +107,21 @@ const Auth = () => {
             <label htmlFor="password">
               <span>Password</span>
               <div className="auth-input-wrap">
-                <input
+                <AppInput
+                  aria-label="Password"
                   autoComplete="current-password"
+                  classNames={{
+                    input: 'pr-11',
+                    inputWrapper:
+                      'h-[46px] min-h-[46px] border-[#2c3b3d] bg-[#11191b] data-[hover=true]:border-[#ffb020]',
+                  }}
                   id="password"
+                  isRequired
                   onChange={(event) => {
                     setPassword(event.target.value);
                     setError('');
                   }}
                   placeholder="Enter your password"
-                  required
                   type={isVisible ? 'text' : 'password'}
                   value={password}
                 />

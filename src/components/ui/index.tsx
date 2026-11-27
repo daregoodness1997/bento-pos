@@ -1,5 +1,7 @@
 import React from 'react';
 
+export * from './controls';
+
 interface PageHeaderProps {
   title: string;
   subtitle?: string;

@@ -2,6 +2,9 @@ import React, { useMemo, useState } from 'react';
 
 import { DashboardLayout } from 'layouts';
 import {
+  AppDatePicker,
+  AppInput,
+  AppSelect,
   EmptyState,
   Field,
   FormActions,
@@ -165,6 +168,19 @@ const Vendors = () => {
         ),
     [data.deliveries, data.vendorPayments, data.vendors],
   );
+
+  const vendorOptions = vendorRows.map((row) => ({
+    key: row.vendor.id,
+    label: row.vendor.name,
+  }));
+  const inventoryOptions = data.inventory.map((item) => ({
+    key: item.id,
+    label: item.name,
+  }));
+  const payMethodOptions = PAY_METHODS.map((method) => ({
+    key: method,
+    label: method,
+  }));
 
   const totals = useMemo(
     () => ({
@@ -704,22 +720,22 @@ const Vendors = () => {
                   : undefined
               }
             >
-              <input
+              <AppInput
                 aria-label="Vendor name"
-                disabled={Boolean(editingVendorId)}
+                isDisabled={Boolean(editingVendorId)}
                 onChange={(event) =>
                   setVendorForm((current) => ({
                     ...current,
                     name: event.target.value,
                   }))
                 }
-                required={!editingVendorId}
+                isRequired={!editingVendorId}
                 type="text"
                 value={vendorForm.name}
               />
             </Field>
             <Field label="Phone">
-              <input
+              <AppInput
                 aria-label="Vendor phone"
                 onChange={(event) =>
                   setVendorForm((current) => ({
@@ -727,13 +743,13 @@ const Vendors = () => {
                     phone: event.target.value,
                   }))
                 }
-                required
+                isRequired
                 type="tel"
                 value={vendorForm.phone}
               />
             </Field>
             <Field label="Supplies">
-              <input
+              <AppInput
                 aria-label="Vendor supplies"
                 onChange={(event) =>
                   setVendorForm((current) => ({
@@ -746,7 +762,7 @@ const Vendors = () => {
               />
             </Field>
             <Field label="Terms (days)">
-              <input
+              <AppInput
                 aria-label="Payment terms in days"
                 min="0"
                 onChange={(event) =>
@@ -968,74 +984,67 @@ const Vendors = () => {
                 <form className="admin-form" onSubmit={handleDeliverySubmit}>
                   <div className="field-grid">
                     <Field label="Vendor">
-                      <select
+                      <AppSelect
                         aria-label="Delivery vendor"
-                        onChange={(event) =>
+                        isRequired
+                        onValueChange={(value) =>
                           setDeliveryForm((current) => ({
                             ...current,
-                            vendorId: event.target.value,
+                            vendorId: value,
                           }))
                         }
-                        required
+                        options={vendorOptions}
                         value={deliveryForm.vendorId}
-                      >
-                        {vendorRows.map((row) => (
-                          <option key={row.vendor.id} value={row.vendor.id}>
-                            {row.vendor.name}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </Field>
                     <Field label="Delivery date">
-                      <input
+                      <AppDatePicker
                         aria-label="Delivery date"
-                        onChange={(event) =>
+                        isRequired
+                        onValueChange={(date) =>
                           setDeliveryForm((current) => ({
                             ...current,
-                            date: event.target.value,
+                            date,
                           }))
                         }
-                        required
-                        type="date"
                         value={deliveryForm.date}
                       />
                     </Field>
                     <Field label="Item">
-                      <input
+                      <AppInput
                         aria-label="Delivery item"
+                        isRequired
                         onChange={(event) =>
                           setDeliveryForm((current) => ({
                             ...current,
                             item: event.target.value,
                           }))
                         }
-                        required
                         type="text"
                         value={deliveryForm.item}
                       />
                     </Field>
                     <Field label="Linked inventory item">
-                      <select
+                      <AppSelect
                         aria-label="Linked inventory item"
-                        onChange={(event) =>
+                        onValueChange={(value) =>
                           setDeliveryForm((current) => ({
                             ...current,
-                            inventoryItemId: event.target.value,
+                            inventoryItemId: value,
                           }))
                         }
+                        options={[
+                          { key: '', label: 'Not linked' },
+                          ...inventoryOptions,
+                        ]}
+                        placeholder="Not linked"
                         value={deliveryForm.inventoryItemId}
-                      >
-                        <option value="">Not linked</option>
-                        {data.inventory.map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {item.name}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </Field>
                     <Field label="Quantity">
-                      <input
+                      <AppInput
                         aria-label="Delivery quantity"
+                        isRequired
                         min="0.01"
                         onChange={(event) =>
                           setDeliveryForm((current) => ({
@@ -1043,15 +1052,15 @@ const Vendors = () => {
                             quantity: event.target.value,
                           }))
                         }
-                        required
                         step="any"
                         type="number"
                         value={deliveryForm.quantity}
                       />
                     </Field>
                     <Field label="Cost per unit">
-                      <input
+                      <AppInput
                         aria-label="Delivery cost per unit"
+                        isRequired
                         min="0.01"
                         onChange={(event) =>
                           setDeliveryForm((current) => ({
@@ -1059,14 +1068,13 @@ const Vendors = () => {
                             cost: event.target.value,
                           }))
                         }
-                        required
                         step="0.01"
                         type="number"
                         value={deliveryForm.cost}
                       />
                     </Field>
                     <Field label="Amount paid now" hint="Leave as 0 if unpaid.">
-                      <input
+                      <AppInput
                         aria-label="Amount paid on delivery"
                         min="0"
                         onChange={(event) =>
@@ -1081,20 +1089,19 @@ const Vendors = () => {
                       />
                     </Field>
                     <Field label="Pay-by date">
-                      <input
+                      <AppDatePicker
                         aria-label="Delivery pay-by date"
-                        onChange={(event) =>
+                        onValueChange={(date) =>
                           setDeliveryForm((current) => ({
                             ...current,
-                            payByDate: event.target.value,
+                            payByDate: date,
                           }))
                         }
-                        type="date"
                         value={deliveryForm.payByDate}
                       />
                     </Field>
                     <Field label="Invoice">
-                      <input
+                      <AppInput
                         aria-label="Delivery invoice"
                         onChange={(event) =>
                           setDeliveryForm((current) => ({
@@ -1129,41 +1136,36 @@ const Vendors = () => {
                 <form className="admin-form" onSubmit={handlePaymentSubmit}>
                   <div className="field-grid">
                     <Field label="Vendor">
-                      <select
+                      <AppSelect
                         aria-label="Payment vendor"
-                        onChange={(event) =>
+                        isRequired
+                        onValueChange={(value) =>
                           setPaymentForm((current) => ({
                             ...current,
-                            vendorId: event.target.value,
+                            vendorId: value,
                           }))
                         }
-                        required
+                        options={vendorOptions}
                         value={paymentForm.vendorId}
-                      >
-                        {vendorRows.map((row) => (
-                          <option key={row.vendor.id} value={row.vendor.id}>
-                            {row.vendor.name}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </Field>
                     <Field label="Payment date">
-                      <input
+                      <AppDatePicker
                         aria-label="Payment date"
-                        onChange={(event) =>
+                        isRequired
+                        onValueChange={(date) =>
                           setPaymentForm((current) => ({
                             ...current,
-                            date: event.target.value,
+                            date,
                           }))
                         }
-                        required
-                        type="date"
                         value={paymentForm.date}
                       />
                     </Field>
                     <Field label="Amount">
-                      <input
+                      <AppInput
                         aria-label="Payment amount"
+                        isRequired
                         min="0.01"
                         onChange={(event) =>
                           setPaymentForm((current) => ({
@@ -1171,32 +1173,26 @@ const Vendors = () => {
                             amount: event.target.value,
                           }))
                         }
-                        required
                         step="0.01"
                         type="number"
                         value={paymentForm.amount}
                       />
                     </Field>
                     <Field label="Method">
-                      <select
+                      <AppSelect
                         aria-label="Payment method"
-                        onChange={(event) =>
+                        onValueChange={(value) =>
                           setPaymentForm((current) => ({
                             ...current,
-                            method: event.target.value as PayMethod,
+                            method: value as PayMethod,
                           }))
                         }
+                        options={payMethodOptions}
                         value={paymentForm.method}
-                      >
-                        {PAY_METHODS.map((method) => (
-                          <option key={method} value={method}>
-                            {method}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </Field>
                     <Field label="Reference">
-                      <input
+                      <AppInput
                         aria-label="Payment reference"
                         onChange={(event) =>
                           setPaymentForm((current) => ({

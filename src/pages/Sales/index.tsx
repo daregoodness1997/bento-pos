@@ -2,7 +2,7 @@ import { memo, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { DashboardLayout } from 'layouts';
-import { SearchIcon } from 'components';
+import { AppInput, PageHeader, SearchIcon } from 'components';
 import { useOrder, useStore } from 'context';
 import { formatNaira } from 'utils/format';
 
@@ -38,14 +38,10 @@ const Sales = () => {
 
   return (
     <DashboardLayout>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Orders</h1>
-          <p className="page-subtitle">
-            Every ticket from this service, in one place.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        subtitle="Every ticket from this service, in one place."
+        title="Orders"
+      />
 
       <div className="table-tools">
         <div className="filter-tabs" aria-label="Order status">
@@ -61,17 +57,19 @@ const Sales = () => {
           ))}
         </div>
 
-        <label className="menu-search" htmlFor="order-search">
-          <SearchIcon />
-          <input
+        <div className="menu-search">
+          <AppInput
             aria-label="Search orders"
-            id="order-search"
+            classNames={{
+              inputWrapper:
+                'h-[42px] min-h-[42px] border-[#1e2a2c] bg-[#11191b] data-[hover=true]:border-[#2b3a3c]',
+            }}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search ticket, channel, or item"
-            type="search"
+            startContent={<SearchIcon />}
             value={query}
           />
-        </label>
+        </div>
       </div>
 
       <div className="table-wrap">

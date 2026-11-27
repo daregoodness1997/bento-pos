@@ -2,6 +2,7 @@ import { memo, useEffect, useState } from 'react';
 
 import { usePrint } from 'context';
 import type { ThermalTransport } from 'context';
+import { AppInput } from '../ui';
 
 const TRANSPORT_OPTIONS: Array<{
   label: string;
@@ -103,8 +104,8 @@ const ThermalPrinterPanel = memo(() => {
           <div className="field-grid">
             <label className="field-label" htmlFor="printer-host">
               <span>Printer IP</span>
-              <input
-                className="field-input"
+              <AppInput
+                aria-label="Printer IP"
                 id="printer-host"
                 onChange={(event) => setHost(event.target.value)}
                 placeholder="192.168.1.50"
@@ -113,8 +114,8 @@ const ThermalPrinterPanel = memo(() => {
             </label>
             <label className="field-label" htmlFor="printer-port">
               <span>Port</span>
-              <input
-                className="field-input"
+              <AppInput
+                aria-label="Port"
                 id="printer-port"
                 inputMode="numeric"
                 onChange={(event) => setPort(event.target.value)}

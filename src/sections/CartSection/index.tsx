@@ -1,10 +1,11 @@
 import React, { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { useOrder, usePrint, useStore } from 'context';
+import { useOrder, useStore } from 'context';
 import { formatNaira } from 'utils/format';
 import type { Tender } from 'types/store';
 import {
+  AppSelect,
   CardIcon,
   CashIcon,
   CheckIcon,
@@ -43,14 +44,10 @@ const CartSection = () => {
     startNewOrder,
   } = useOrder();
   const { data } = useStore();
-  const { autoPrint, printReceipt } = usePrint();
   const navigate = useNavigate();
 
   const handleCharge = () => {
-    const order = placeOrder();
-    if (order && autoPrint) {
-      printReceipt(order);
-    }
+    placeOrder();
   };
 
   return (
@@ -80,7 +77,7 @@ const CartSection = () => {
             {formatNaira(total)} {tender === 'Credit' ? 'is owed' : 'collected'}{' '}
             by {tender}. Ticket {lastOrder?.id} is ready to view.
           </p>
-          {lastOrder && <PrintActions compact order={lastOrder} />}
+          {lastOrder && <PrintActions compact order={lastOrder} thermalOnly />}
           <div className="ticket-success__actions">
             <button
               className="secondary-button"
@@ -190,24 +187,22 @@ const CartSection = () => {
             </div>
 
             {tender === 'Credit' && data.settings.creditEnabled && (
-              <label
-                className="admin-field ticket-credit"
-                htmlFor="ticket-customer"
-              >
+              <div className="admin-field ticket-credit">
                 <span>Customer</span>
-                <select
-                  id="ticket-customer"
-                  onChange={(event) => setCustomer(event.target.value)}
+                <AppSelect
+                  aria-label="Customer"
+                  options={[
+                    { key: '', label: 'Select customer' },
+                    ...data.customers.map((customer) => ({
+                      key: customer.id,
+                      label: customer.name,
+                    })),
+                  ]}
+                  placeholder="Select customer"
                   value={customerId}
-                >
-                  <option value="">Select customer</option>
-                  {data.customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  onValueChange={setCustomer}
+                />
+              </div>
             )}
 
             <button

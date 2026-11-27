@@ -1,7 +1,7 @@
 import React, { memo, useMemo, useState } from 'react';
 
 import { DashboardLayout } from 'layouts';
-import { MenuCard, PageHeader, SearchIcon } from 'components';
+import { AppInput, MenuCard, PageHeader, SearchIcon } from 'components';
 import { useOrder, useStore } from 'context';
 import { CATEGORIES } from './constants';
 
@@ -44,17 +44,19 @@ const Dashboard = () => {
       />
 
       <div className="menu-toolbar">
-        <label className="menu-search" htmlFor="menu-search">
-          <SearchIcon />
-          <input
+        <div className="menu-search">
+          <AppInput
             aria-label="Search menu"
-            id="menu-search"
+            classNames={{
+              inputWrapper:
+                'h-[42px] min-h-[42px] border-[#1e2a2c] bg-[#11191b] data-[hover=true]:border-[#2b3a3c]',
+            }}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search menu"
-            type="search"
+            startContent={<SearchIcon />}
             value={query}
           />
-        </label>
+        </div>
 
         <div className="category-tabs" aria-label="Departments">
           {CATEGORIES.map((name) => (

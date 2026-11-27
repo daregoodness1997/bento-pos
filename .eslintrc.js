@@ -15,6 +15,9 @@ module.exports = {
     'no-undef': 'off',
     '@typescript-eslint/no-unused-vars': 'error',
     'import/prefer-default-export': 'off',
+    'react/jsx-props-no-spreading': 'off',
+    'react/require-default-props': 'off',
+    'jsx-a11y/label-has-associated-control': ['error', { assert: 'either' }],
     'react/function-component-definition': [
       'error',
       {

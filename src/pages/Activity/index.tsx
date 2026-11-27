@@ -1,7 +1,15 @@
 import { useMemo, useState } from 'react';
 
 import { DashboardLayout } from 'layouts';
-import { EmptyState, Field, PageHeader, Panel, RecordTable } from 'components';
+import {
+  AppInput,
+  AppSelect,
+  EmptyState,
+  Field,
+  PageHeader,
+  Panel,
+  RecordTable,
+} from 'components';
 import type { TableColumn } from 'components';
 import { useStore } from 'context';
 import type { AuditAction, AuditEvent } from 'types/store';
@@ -114,7 +122,7 @@ const Activity = () => {
         >
           <div className="field-grid">
             <Field label="Search">
-              <input
+              <AppInput
                 aria-label="Search activity"
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Actor, entity, or summary"
@@ -123,19 +131,15 @@ const Activity = () => {
               />
             </Field>
             <Field label="Action">
-              <select
+              <AppSelect
                 aria-label="Action filter"
-                onChange={(event) =>
-                  setAction(event.target.value as ActionFilter)
-                }
+                onValueChange={(value) => setAction(value as ActionFilter)}
+                options={ACTION_FILTERS.map((entry) => ({
+                  key: String(entry.id),
+                  label: entry.label,
+                }))}
                 value={action}
-              >
-                {ACTION_FILTERS.map((entry) => (
-                  <option key={entry.id} value={entry.id}>
-                    {entry.label}
-                  </option>
-                ))}
-              </select>
+              />
             </Field>
           </div>
         </Panel>

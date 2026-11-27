@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 
 import { DashboardLayout } from 'layouts';
-import { StatCard } from 'components';
+import { PageHeader, StatCard } from 'components';
 import { formatNaira } from 'utils/format';
 
 const STATS = [
@@ -49,12 +49,10 @@ const TOP_DISHES = [
 const Analytics = () => {
   return (
     <DashboardLayout>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Analytics</h1>
-          <p className="page-subtitle">A clear read on today at the counter.</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Analytics"
+        subtitle="A clear read on today at the counter."
+      />
 
       <div className="stats-grid">
         {STATS.map((stat) => (

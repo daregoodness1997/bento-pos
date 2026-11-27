@@ -4,6 +4,9 @@ import { useNavigate } from 'react-router-dom';
 
 import { DashboardLayout } from 'layouts';
 import {
+  AppDatePicker,
+  AppInput,
+  AppSelect,
   Field,
   FormActions,
   PageHeader,
@@ -92,6 +95,16 @@ const ORDER_STATUSES: OrderStatus[] = [
   'Preparing',
   'Refunded',
 ];
+
+const PAY_METHOD_OPTIONS = PAY_METHODS.map((method) => ({
+  key: method,
+  label: method,
+}));
+
+const ORDER_STATUS_OPTIONS = ORDER_STATUSES.map((status) => ({
+  key: status,
+  label: status,
+}));
 
 function newestFirst<T extends { createdAt: string }>(records: T[]): T[] {
   return records.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -715,7 +728,7 @@ const History = () => {
         >
           <div className="field-grid">
             <Field label="Search">
-              <input
+              <AppInput
                 aria-label="Search history"
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Ticket, item, customer, or note"
@@ -724,11 +737,10 @@ const History = () => {
               />
             </Field>
             <Field label="Date">
-              <input
+              <AppDatePicker
                 aria-label="Filter by date"
-                onChange={(event) => setDate(event.target.value)}
-                type="date"
                 value={date}
+                onValueChange={setDate}
               />
             </Field>
           </div>
@@ -742,25 +754,22 @@ const History = () => {
             <form className="admin-form" onSubmit={handleEditSubmit}>
               <div className="field-grid">
                 <Field label="Date">
-                  <input
+                  <AppDatePicker
                     aria-label="Record date"
-                    onChange={(event) =>
+                    isRequired
+                    value={editForm.date}
+                    onValueChange={(value) =>
                       setEditForm((current) =>
-                        current
-                          ? { ...current, date: event.target.value }
-                          : current,
+                        current ? { ...current, date: value } : current,
                       )
                     }
-                    required
-                    type="date"
-                    value={editForm.date}
                   />
                 </Field>
 
                 {editForm.type === 'sales' && (
                   <>
                     <Field label="Amount paid">
-                      <input
+                      <AppInput
                         aria-label="Sale amount paid"
                         min="0"
                         onChange={(event) =>
@@ -776,26 +785,21 @@ const History = () => {
                       />
                     </Field>
                     <Field label="Status">
-                      <select
+                      <AppSelect
                         aria-label="Sale status"
-                        onChange={(event) =>
+                        options={ORDER_STATUS_OPTIONS}
+                        value={editForm.status}
+                        onValueChange={(value) =>
                           setEditForm((current) =>
                             current?.type === 'sales'
                               ? {
                                   ...current,
-                                  status: event.target.value as OrderStatus,
+                                  status: value as OrderStatus,
                                 }
                               : current,
                           )
                         }
-                        value={editForm.status}
-                      >
-                        {ORDER_STATUSES.map((status) => (
-                          <option key={status} value={status}>
-                            {status}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </Field>
                   </>
                 )}
@@ -803,7 +807,7 @@ const History = () => {
                 {editForm.type === 'debtPayments' && (
                   <>
                     <Field label="Amount">
-                      <input
+                      <AppInput
                         aria-label="Debt payment amount"
                         min="0.01"
                         onChange={(event) =>
@@ -819,29 +823,24 @@ const History = () => {
                       />
                     </Field>
                     <Field label="Method">
-                      <select
+                      <AppSelect
                         aria-label="Debt payment method"
-                        onChange={(event) =>
+                        options={PAY_METHOD_OPTIONS}
+                        value={editForm.method}
+                        onValueChange={(value) =>
                           setEditForm((current) =>
                             current?.type === 'debtPayments'
                               ? {
                                   ...current,
-                                  method: event.target.value as PayMethod,
+                                  method: value as PayMethod,
                                 }
                               : current,
                           )
                         }
-                        value={editForm.method}
-                      >
-                        {PAY_METHODS.map((method) => (
-                          <option key={method} value={method}>
-                            {method}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </Field>
                     <Field label="Reference">
-                      <input
+                      <AppInput
                         aria-label="Debt payment reference"
                         onChange={(event) =>
                           setEditForm((current) =>
@@ -860,7 +859,7 @@ const History = () => {
                 {editForm.type === 'expenses' && (
                   <>
                     <Field label="Category">
-                      <input
+                      <AppInput
                         aria-label="Expense category"
                         onChange={(event) =>
                           setEditForm((current) =>
@@ -874,7 +873,7 @@ const History = () => {
                       />
                     </Field>
                     <Field label="Description">
-                      <input
+                      <AppInput
                         aria-label="Expense description"
                         onChange={(event) =>
                           setEditForm((current) =>
@@ -888,7 +887,7 @@ const History = () => {
                       />
                     </Field>
                     <Field label="Amount">
-                      <input
+                      <AppInput
                         aria-label="Expense amount"
                         min="0.01"
                         onChange={(event) =>
@@ -904,26 +903,21 @@ const History = () => {
                       />
                     </Field>
                     <Field label="Method">
-                      <select
+                      <AppSelect
                         aria-label="Expense method"
-                        onChange={(event) =>
+                        options={PAY_METHOD_OPTIONS}
+                        value={editForm.method}
+                        onValueChange={(value) =>
                           setEditForm((current) =>
                             current?.type === 'expenses'
                               ? {
                                   ...current,
-                                  method: event.target.value as PayMethod,
+                                  method: value as PayMethod,
                                 }
                               : current,
                           )
                         }
-                        value={editForm.method}
-                      >
-                        {PAY_METHODS.map((method) => (
-                          <option key={method} value={method}>
-                            {method}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </Field>
                   </>
                 )}

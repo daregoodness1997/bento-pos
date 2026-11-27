@@ -7,6 +7,7 @@ import {
   CardIcon,
   CashIcon,
   CheckIcon,
+  PageHeader,
   PrintActions,
   ReceiptIcon,
 } from 'components';
@@ -33,14 +34,10 @@ const OrderDetail = () => {
   if (!order) {
     return (
       <DashboardLayout>
-        <div className="page-header">
-          <div>
-            <h1 className="page-title">Order not found</h1>
-            <p className="page-subtitle">
-              This ticket is no longer available in this service.
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          subtitle="This ticket is no longer available in this service."
+          title="Order not found"
+        />
         <button
           className="secondary-button"
           onClick={() => navigate('/app/sales')}
@@ -148,7 +145,7 @@ const OrderDetail = () => {
               {order.tender}
             </strong>
           </div>
-          <PrintActions compact={false} order={order} />
+          <PrintActions compact={false} order={order} thermalOnly={false} />
 
           <button
             className="primary-button"
