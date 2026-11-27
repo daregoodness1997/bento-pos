@@ -1,33 +1,44 @@
 import React, { FC, memo } from 'react';
-import { Card, CardHeader, CardBody } from '@nextui-org/react';
-import { Icon } from '@iconify/react';
 
 interface Props {
-  title: string;
+  label: string;
   value: string;
-  icon: string;
+  delta: string;
+  sparkline: number[];
+  negative?: boolean;
 }
 
-export const StatCard: FC<Props> = ({ icon, title, value }) => {
+const StatCard: FC<Props> = ({
+  label,
+  value,
+  delta,
+  sparkline,
+  negative = false,
+}) => {
+  const peak = Math.max(...sparkline);
+
   return (
-    <Card
-      className="max-w-[400px] px-6 py-4 "
-      shadow="lg"
-      fullWidth
-      isHoverable
-      isPressable
-    >
-      <CardHeader className="flex gap-3">
-        <div className="flex flex-col">
-          <Icon icon={icon} className=" text-[32px]" />
-          <p className="text-large text-default-500">{value}</p>
-        </div>
-      </CardHeader>
-      <CardBody>
-        <p>{title}</p>
-      </CardBody>
-    </Card>
+    <article className="stat-panel">
+      <div className="stat-panel__label">{label}</div>
+      <div className="stat-panel__value">{value}</div>
+      <div className={`stat-panel__delta ${negative ? 'is-negative' : ''}`}>
+        {delta}
+      </div>
+      <div className="sparkline" aria-hidden="true">
+        {sparkline.map((point) => (
+          <span
+            className={point === peak ? 'is-peak' : ''}
+            key={point}
+            style={{ height: `${point}%` }}
+          />
+        ))}
+      </div>
+    </article>
   );
 };
 
 export default memo(StatCard);
+
+StatCard.defaultProps = {
+  negative: false,
+};

@@ -1,13 +1,16 @@
-import React from 'react';
-export const SunIcon = (props) => (
+interface Props {
+  className?: string;
+}
+
+export const SunIcon = ({ className = '' }: Props) => (
   <svg
     aria-hidden="true"
+    className={className}
     focusable="false"
     height="1em"
     role="presentation"
     viewBox="0 0 24 24"
     width="1em"
-    {...props}
   >
     <g fill="currentColor">
       <path d="M19 12a7 7 0 11-7-7 7 7 0 017 7z" />
@@ -15,3 +18,5 @@ export const SunIcon = (props) => (
     </g>
   </svg>
 );
+
+SunIcon.defaultProps = { className: '' };

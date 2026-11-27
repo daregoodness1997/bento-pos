@@ -10,13 +10,14 @@ interface Props {
 
 const DashboardLayout: FC<Props> = ({ children, hasCart }) => {
   return (
-    <div className="flex items-start ">
+    <div className="app-shell">
       <SideMenu />
-      <div className="px-4 py-4 w-full">
+
+      <div className="app-main">
         <TopNav />
 
-        <div className="flex w-full items-start py-8 gap-6">
-          <div className="w-full"> {children}</div>
+        <div className={`app-content ${hasCart ? 'has-ticket' : ''}`}>
+          <main className="app-page">{children}</main>
           {hasCart && <CartSection />}
         </div>
       </div>

@@ -1,14 +1,14 @@
 import { createRoot } from 'react-dom/client';
+import '@fontsource/ibm-plex-sans/400.css';
+import '@fontsource/ibm-plex-sans/500.css';
+import '@fontsource/ibm-plex-sans/600.css';
+import '@fontsource/ibm-plex-sans/700.css';
+import '@fontsource/ibm-plex-mono/400.css';
+import '@fontsource/ibm-plex-mono/500.css';
+import '@fontsource/ibm-plex-mono/600.css';
 import App from './App';
 import './index.css';
 
 const container = document.getElementById('root') as HTMLElement;
 const root = createRoot(container);
 root.render(<App />);
-
-// // calling IPC exposed from preload script
-// window.electron.ipcRenderer.once('ipc-example', (arg) => {
-//   // eslint-disable-next-line no-console
-//   console.log(arg, 'argument');
-// });
-// window.electron.ipcRenderer.sendMessage('ipc-example', ['ping']);

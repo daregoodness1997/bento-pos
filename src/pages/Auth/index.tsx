@@ -1,53 +1,153 @@
-import React, { memo, useState } from 'react';
-import { Button, Input } from '@nextui-org/react';
+import { memo, useState } from 'react';
+import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { EyeFilledIcon, EyeSlashFilledIcon } from 'components';
-
-import './styles.scss';
+import { DEMO_EMAIL, DEMO_PASSWORD, useAuth } from 'context';
+import { formatNaira } from 'utils/format';
 
 const Auth = () => {
-  const [isVisible, setIsVisible] = useState<boolean>(false);
-
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isVisible, setIsVisible] = useState(false);
+  const [error, setError] = useState('');
+  const { login } = useAuth();
   const navigate = useNavigate();
 
-  const toggleVisibility = () => setIsVisible(!isVisible);
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
 
-  const handleSubmit = () => {
+    if (!login(email, password)) {
+      setError('Those details do not match this register.');
+      return;
+    }
+
     navigate('/app');
   };
+
   return (
-    <div className="w-full h-screen flex items-center justify-center">
-      <div className="w-1/4">
-        <h1 className="text-2xl font-bold text-white">Bento POS</h1>
-        <form onSubmit={handleSubmit} className="form">
-          <div className="form-container">
-            <Input type="email" label="Email" placeholder="Enter your email" />
-            <Input
-              label="Password"
-              placeholder="Enter your password"
-              endContent={
-                <button
-                  className="focus:outline-none"
-                  type="button"
-                  onClick={toggleVisibility}
-                >
-                  {isVisible ? (
-                    <EyeSlashFilledIcon className="text-2xl text-default-400 pointer-events-none" />
-                  ) : (
-                    <EyeFilledIcon className="text-2xl text-default-400 pointer-events-none" />
-                  )}
-                </button>
-              }
-              type={isVisible ? 'text' : 'password'}
-            />
+    <div className="auth-shell">
+      <aside className="auth-aside">
+        <div className="auth-brand">
+          <span className="auth-brand__mark">B</span>
+          <span className="auth-brand__name">BentoPOS</span>
+        </div>
+
+        <div className="auth-statement">
+          <h1>Service starts at the counter.</h1>
+          <p>
+            Build tickets, take payment, and keep the line moving from one
+            focused workspace.
+          </p>
+        </div>
+
+        <div className="auth-ticket">
+          <div className="ticket-eyebrow">
+            <span>Ticket #1042</span>
+            <span>Dine in</span>
+          </div>
+          <div className="auth-ticket__line">
+            <span>Chicken Wings × 2</span>
+            <span>{formatNaira(12000)}</span>
+          </div>
+          <div className="auth-ticket__line">
+            <span>Fried Rice × 2</span>
+            <span>{formatNaira(5000)}</span>
+          </div>
+          <div className="auth-ticket__line">
+            <span>Zobo × 2</span>
+            <span>{formatNaira(2400)}</span>
+          </div>
+          <div className="ticket-row">
+            <span>Subtotal</span>
+            <span>{formatNaira(19400)}</span>
+          </div>
+          <div className="ticket-row">
+            <span>VAT (7.5%)</span>
+            <span>{formatNaira(1455)}</span>
+          </div>
+          <div className="auth-ticket__total">
+            <span>Total due</span>
+            <span>{formatNaira(20855)}</span>
+          </div>
+        </div>
+      </aside>
+
+      <section className="auth-panel">
+        <form className="auth-form" onSubmit={handleSubmit}>
+          <h2>Start your shift</h2>
+          <p className="auth-form__subtitle">Sign in to open register 02.</p>
+
+          <div className="auth-field">
+            <label htmlFor="email">
+              <span>Email</span>
+              <div className="auth-input-wrap">
+                <input
+                  autoComplete="email"
+                  id="email"
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                    setError('');
+                  }}
+                  placeholder="you@bento.pos"
+                  required
+                  type="email"
+                  value={email}
+                />
+              </div>
+            </label>
           </div>
 
-          <Button type="submit" color="primary" radius="full" size="lg">
-            Login
-          </Button>
+          <div className="auth-field">
+            <label htmlFor="password">
+              <span>Password</span>
+              <div className="auth-input-wrap">
+                <input
+                  autoComplete="current-password"
+                  id="password"
+                  onChange={(event) => {
+                    setPassword(event.target.value);
+                    setError('');
+                  }}
+                  placeholder="Enter your password"
+                  required
+                  type={isVisible ? 'text' : 'password'}
+                  value={password}
+                />
+                <button
+                  aria-label={isVisible ? 'Hide password' : 'Show password'}
+                  className="auth-toggle"
+                  onClick={() => setIsVisible((current) => !current)}
+                  type="button"
+                >
+                  {isVisible ? <EyeSlashFilledIcon /> : <EyeFilledIcon />}
+                </button>
+              </div>
+            </label>
+          </div>
+
+          {error && (
+            <p className="auth-error" role="alert">
+              {error}
+            </p>
+          )}
+
+          <button className="auth-submit" type="submit">
+            Open register
+          </button>
+
+          <div className="auth-meta">
+            <span>BentoPOS v4.6</span>
+            <span>
+              Demo: {DEMO_EMAIL} / {DEMO_PASSWORD}
+            </span>
+            <span>
+              Owner, manager, cashier and auditor demo accounts share this
+              password.
+            </span>
+          </div>
         </form>
-      </div>
+      </section>
     </div>
   );
 };

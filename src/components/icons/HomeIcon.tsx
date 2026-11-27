@@ -1,37 +1,33 @@
-import React from 'react';
+interface Props {
+  className?: string;
+}
 
-const HomeIcon = () => {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 20 20"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <g clipPath="url(#clip0_409_2642)">
-        <path
-          d="M2.5 2.5L8.39167 16.6417L10.4833 10.4833L16.6417 8.39167L2.5 2.5Z"
-          stroke="white"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M10.8334 10.8334L15.8334 15.8334"
-          stroke="white"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </g>
-      <defs>
-        <clipPath id="clip0_409_2642">
-          <rect width="20" height="20" fill="white" />
-        </clipPath>
-      </defs>
-    </svg>
-  );
-};
+const HomeIcon = ({ className = '' }: Props) => (
+  <svg
+    aria-hidden="true"
+    className={className}
+    fill="none"
+    height="20"
+    viewBox="0 0 20 20"
+    width="20"
+  >
+    <path
+      d="M2.75 8.5 10 2.75l7.25 5.75v8.25a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5V8.5Z"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.5"
+    />
+    <path
+      d="M7.75 17.25v-5h4.5v5"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.5"
+    />
+  </svg>
+);
+
+HomeIcon.defaultProps = { className: '' };
 
 export default HomeIcon;

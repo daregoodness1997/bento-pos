@@ -70,7 +70,8 @@
       "\\.(css|less|sass|scss)$": "identity-obj-proxy"
     },
     "setupFiles": [
-      "./.erb/scripts/check-build-exists.ts"
+      "./.erb/scripts/check-build-exists.ts",
+      "./src/__tests__/setup.ts"
     ],
     "testEnvironment": "jsdom",
     "testEnvironmentOptions": {
@@ -78,7 +79,8 @@
     },
     "testPathIgnorePatterns": [
       "release/app/dist",
-      ".erb/dll"
+      ".erb/dll",
+      "<rootDir>/src/__tests__/setup.ts"
     ],
     "transform": {
       "\\.(ts|tsx|js|jsx)$": "ts-jest"
@@ -98,6 +100,8 @@
   "devDependencies": {
     "@electron/notarize": "^2.1.0",
     "@electron/rebuild": "^3.3.0",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/ibm-plex-sans": "^5.3.0",
     "@iconify/react": "^4.1.1",
     "@pmmmwh/react-refresh-webpack-plugin": "^0.5.11",
     "@svgr/webpack": "^8.1.0",
@@ -231,8 +235,14 @@
     }
   },
   "devEngines": {
-    "node": ">=14.x",
-    "npm": ">=7.x"
+    "runtime": {
+      "name": "node",
+      "version": ">=14"
+    },
+    "packageManager": {
+      "name": "npm",
+      "version": ">=7"
+    }
   },
   "electronmon": {
     "patterns": [

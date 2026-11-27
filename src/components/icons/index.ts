@@ -8,6 +8,8 @@ import AnalyticsIcon from './AnalyticsIcon';
 import ResturantIcon from './ResturantIcon';
 import SettingsIcon from './SettingsIcon';
 
+export * from './PosIcons';
+
 export {
   EyeFilledIcon,
   EyeSlashFilledIcon,

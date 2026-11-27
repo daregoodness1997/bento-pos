@@ -1,8 +1,5 @@
 import React, { FC, memo } from 'react';
-
 import { Link } from 'react-router-dom';
-
-import './styles.scss';
 
 interface Props {
   isActive?: boolean;
@@ -13,8 +10,13 @@ interface Props {
 
 const NavLink: FC<Props> = ({ name, path, isActive = false, icon }) => {
   return (
-    <Link to={path} className={`nav-link ${isActive ? 'active' : ''}`}>
-      {icon} {name}
+    <Link
+      aria-current={isActive ? 'page' : undefined}
+      className={`rail-link ${isActive ? 'is-active' : ''}`}
+      to={path}
+    >
+      <span className="rail-link__icon">{icon}</span>
+      <span className="rail-link__label">{name}</span>
     </Link>
   );
 };

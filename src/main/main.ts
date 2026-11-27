@@ -9,7 +9,8 @@
  * `./src/main.js` using webpack. This gives us some performance wins.
  */
 import path from 'path';
-import { app, BrowserWindow, shell, ipcMain } from 'electron';
+import net from 'net';
+import { app, BrowserWindow, shell, ipcMain, session } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
@@ -30,6 +31,59 @@ ipcMain.on('ipc-example', async (event, arg) => {
   console.log(msgTemplate(arg));
   event.reply('ipc-example', msgTemplate('pong'));
 });
+
+ipcMain.handle(
+  'print-receipt',
+  async () =>
+    new Promise<boolean>((resolve) => {
+      if (!mainWindow) {
+        resolve(false);
+        return;
+      }
+
+      mainWindow.webContents.print(
+        { printBackground: true, silent: false },
+        (success) => resolve(success),
+      );
+    }),
+);
+
+ipcMain.handle(
+  'print-escpos-network',
+  async (_event, bytes: number[], target: { host: string; port: number }) =>
+    new Promise<boolean>((resolve) => {
+      if (!target.host || !target.port || bytes.length === 0) {
+        resolve(false);
+        return;
+      }
+
+      const socket = new net.Socket();
+      const finish = (success: boolean) => {
+        socket.destroy();
+        resolve(success);
+      };
+
+      socket.once('error', () => finish(false));
+      socket.connect(target.port, target.host, () => {
+        socket.write(Buffer.from(bytes), (error) => finish(!error));
+      });
+    }),
+);
+
+const allowThermalPermission = (permission: string) =>
+  permission === 'serial' || permission === 'usb';
+
+const configureThermalPermissions = () => {
+  session.defaultSession.setPermissionRequestHandler(
+    (_webContents, permission, callback) => {
+      callback(allowThermalPermission(String(permission)));
+    },
+  );
+
+  session.defaultSession.setPermissionCheckHandler((_webContents, permission) =>
+    allowThermalPermission(String(permission)),
+  );
+};
 
 if (process.env.NODE_ENV === 'production') {
   const sourceMapSupport = require('source-map-support');
@@ -127,6 +181,7 @@ app.on('window-all-closed', () => {
 app
   .whenReady()
   .then(() => {
+    configureThermalPermissions();
     createWindow();
     app.on('activate', () => {
       // On macOS it's common to re-create a window in the app when the

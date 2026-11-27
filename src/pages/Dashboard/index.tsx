@@ -1,60 +1,87 @@
-import React, { memo } from 'react';
-import { Input, Button, Chip, ScrollShadow } from '@nextui-org/react';
+import React, { memo, useMemo, useState } from 'react';
 
 import { DashboardLayout } from 'layouts';
-import { MenuCard, MoonIcon, SearchIcon } from 'components';
-import { MENU } from './constants';
+import { MenuCard, PageHeader, SearchIcon } from 'components';
+import { useOrder, useStore } from 'context';
+import { CATEGORIES } from './constants';
 
 const Dashboard = () => {
+  const [query, setQuery] = useState('');
+  const { data } = useStore();
+  const { department, setDepartment, itemCount, orderType, setOrderType } =
+    useOrder();
+
+  const visibleMenu = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return data.menu.filter((item) => {
+      const matchesDepartment = item.category === department;
+      const matchesQuery =
+        normalizedQuery.length === 0 ||
+        item.name.toLowerCase().includes(normalizedQuery);
+      return matchesDepartment && matchesQuery;
+    });
+  }, [data.menu, department, query]);
+
   return (
     <DashboardLayout hasCart>
-      <div className="flex items-center justify-between">
-        <Input
-          placeholder="Search for product"
-          className="w-1/3"
-          size="md"
-          radius="full"
-          startContent={
-            <SearchIcon className="text-black/50 mb-0.5 dark:text-white/90 text-slate-400 pointer-events-none flex-shrink-0" />
-          }
-        />
+      <PageHeader
+        title="Point of sale"
+        subtitle={`Tap an item to add it to the ticket. ${itemCount} on the ticket.`}
+        actions={
+          <div className="segmented" aria-label="Order type">
+            {(['Dine in', 'Takeaway', 'Delivery'] as const).map((type) => (
+              <button
+                className={`segment ${orderType === type ? 'is-active' : ''}`}
+                key={type}
+                onClick={() => setOrderType(type)}
+                type="button"
+              >
+                {type}
+              </button>
+            ))}
+          </div>
+        }
+      />
 
-        <Button color="primary" radius="full" size="md">
-          Create Order
-        </Button>
-      </div>
+      <div className="menu-toolbar">
+        <label className="menu-search" htmlFor="menu-search">
+          <SearchIcon />
+          <input
+            aria-label="Search menu"
+            id="menu-search"
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search menu"
+            type="search"
+            value={query}
+          />
+        </label>
 
-      <div className="mt-6 mb-4 flex items-center gap-2">
-        <Chip color="primary" startContent={<MoonIcon />} size="lg">
-          All Menu
-        </Chip>
-        <Chip size="lg" startContent={<MoonIcon />}>
-          Main Course
-        </Chip>
-        <Chip size="lg" startContent={<MoonIcon />}>
-          Desserts
-        </Chip>
-        <Chip size="lg" startContent={<MoonIcon />}>
-          Drinks
-        </Chip>
-        <Chip size="lg" startContent={<MoonIcon />}>
-          Asain
-        </Chip>
-      </div>
-
-      <ScrollShadow className="w-full h-[75vh] overflow-y-scroll no-scrollbar">
-        <div className="mt-4 grid grid-cols-4 gap-4">
-          {MENU.map((menu) => (
-            <MenuCard
-              key={menu.id}
-              name={menu.name}
-              price={menu.price}
-              imageUrl={menu.imageUrl}
-              currency="₦"
-            />
+        <div className="category-tabs" aria-label="Departments">
+          {CATEGORIES.map((name) => (
+            <button
+              className={`category-tab ${department === name ? 'is-active' : ''}`}
+              key={name}
+              onClick={() => setDepartment(name)}
+              type="button"
+            >
+              {name}
+            </button>
           ))}
         </div>
-      </ScrollShadow>
+      </div>
+
+      {visibleMenu.length > 0 ? (
+        <div className="menu-grid">
+          {visibleMenu.map((item) => (
+            <MenuCard item={item} key={item.id} />
+          ))}
+        </div>
+      ) : (
+        <div className="ticket-empty">
+          <strong>No items found</strong>
+          <p>Try another name or switch department.</p>
+        </div>
+      )}
     </DashboardLayout>
   );
 };
