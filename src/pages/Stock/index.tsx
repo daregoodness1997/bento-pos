@@ -592,97 +592,367 @@ const Stock = () => {
   const { errors: countErrors } = countForm.formState;
   const { errors: lossErrors } = lossForm.formState;
 
-  const itemSidePanel =
-    form === 'item' && canManageInventory ? (
-      <SidePanel
-        label="Inventory item"
-        onClose={clearForm}
-        subtitle="Set the units and stock thresholds used across the app."
-        title={editingId ? 'Edit inventory item' : 'Add inventory item'}
-      >
-        <form
-          className="admin-form"
-          onSubmit={itemForm.handleSubmit(submitItem)}
+  const sidePanel = (() => {
+    if (form === 'item' && canManageInventory) {
+      return (
+        <SidePanel
+          label="Inventory item"
+          onClose={clearForm}
+          subtitle="Set the units and stock thresholds used across the app."
+          title={editingId ? 'Edit inventory item' : 'Add inventory item'}
         >
-          <div className="field-grid">
-            <Field error={itemErrors.name?.message} label="Name">
-              <AppInput
-                aria-label="Name"
-                isRequired
-                type="text"
-                {...itemForm.register('name')}
-              />
-            </Field>
-            <Field error={itemErrors.category?.message} label="Category">
-              <FormSelect
-                control={itemForm.control}
-                label="Category"
-                name="category"
-                options={DEPARTMENT_OPTIONS}
-              />
-            </Field>
-            <Field error={itemErrors.unit?.message} label="Unit">
-              <AppInput
-                aria-label="Unit"
-                isRequired
-                type="text"
-                {...itemForm.register('unit')}
-              />
-            </Field>
-            <Field
-              error={itemErrors.openingStock?.message}
-              label="Opening stock"
-            >
-              <AppInput
-                aria-label="Opening stock"
-                min="0"
-                step="0.01"
-                type="number"
-                {...itemForm.register('openingStock')}
-              />
-            </Field>
-            <Field error={itemErrors.cost?.message} label="Cost">
-              <AppInput
-                aria-label="Cost"
-                min="0"
-                step="0.01"
-                type="number"
-                {...itemForm.register('cost')}
-              />
-            </Field>
-            <Field
-              error={itemErrors.reorderLevel?.message}
-              label="Reorder level"
-            >
-              <AppInput
-                aria-label="Reorder level"
-                min="0"
-                step="0.01"
-                type="number"
-                {...itemForm.register('reorderLevel')}
-              />
-            </Field>
-            <Field error={itemErrors.targetLevel?.message} label="Target level">
-              <AppInput
-                aria-label="Target level"
-                min="0"
-                step="0.01"
-                type="number"
-                {...itemForm.register('targetLevel')}
-              />
-            </Field>
-          </div>
-          <FormActions
-            onSecondary={clearForm}
-            secondaryLabel="Cancel"
-            submitLabel={editingId ? 'Update item' : 'Save item'}
-          />
-        </form>
-      </SidePanel>
-    ) : undefined;
+          <form
+            className="admin-form"
+            onSubmit={itemForm.handleSubmit(submitItem)}
+          >
+            <div className="field-grid">
+              <Field error={itemErrors.name?.message} label="Name">
+                <AppInput
+                  aria-label="Name"
+                  isRequired
+                  type="text"
+                  {...itemForm.register('name')}
+                />
+              </Field>
+              <Field error={itemErrors.category?.message} label="Category">
+                <FormSelect
+                  control={itemForm.control}
+                  label="Category"
+                  name="category"
+                  options={DEPARTMENT_OPTIONS}
+                />
+              </Field>
+              <Field error={itemErrors.unit?.message} label="Unit">
+                <AppInput
+                  aria-label="Unit"
+                  isRequired
+                  type="text"
+                  {...itemForm.register('unit')}
+                />
+              </Field>
+              <Field
+                error={itemErrors.openingStock?.message}
+                label="Opening stock"
+              >
+                <AppInput
+                  aria-label="Opening stock"
+                  min="0"
+                  step="0.01"
+                  type="number"
+                  {...itemForm.register('openingStock')}
+                />
+              </Field>
+              <Field error={itemErrors.cost?.message} label="Cost">
+                <AppInput
+                  aria-label="Cost"
+                  min="0"
+                  step="0.01"
+                  type="number"
+                  {...itemForm.register('cost')}
+                />
+              </Field>
+              <Field
+                error={itemErrors.reorderLevel?.message}
+                label="Reorder level"
+              >
+                <AppInput
+                  aria-label="Reorder level"
+                  min="0"
+                  step="0.01"
+                  type="number"
+                  {...itemForm.register('reorderLevel')}
+                />
+              </Field>
+              <Field
+                error={itemErrors.targetLevel?.message}
+                label="Target level"
+              >
+                <AppInput
+                  aria-label="Target level"
+                  min="0"
+                  step="0.01"
+                  type="number"
+                  {...itemForm.register('targetLevel')}
+                />
+              </Field>
+            </div>
+            <FormActions
+              onSecondary={clearForm}
+              secondaryLabel="Cancel"
+              submitLabel={editingId ? 'Update item' : 'Save item'}
+            />
+          </form>
+        </SidePanel>
+      );
+    }
+
+    if (form === 'delivery' && canManageVendors) {
+      return (
+        <SidePanel
+          label="Delivery"
+          onClose={clearForm}
+          subtitle="Unpaid amounts are added to the vendor balance."
+          title={editingId ? 'Edit delivery' : 'Record delivery'}
+        >
+          <form
+            className="admin-form"
+            onSubmit={deliveryForm.handleSubmit(submitDelivery)}
+          >
+            <div className="field-grid">
+              <Field error={deliveryErrors.vendorId?.message} label="Vendor">
+                <FormSelect
+                  control={deliveryForm.control}
+                  isRequired
+                  label="Vendor"
+                  name="vendorId"
+                  options={vendorOptions}
+                  placeholder="Select vendor"
+                />
+              </Field>
+              <Field
+                error={deliveryErrors.item?.message}
+                label="Inventory item"
+              >
+                <FormSelect
+                  control={deliveryForm.control}
+                  isRequired
+                  label="Inventory item"
+                  name="inventoryItemId"
+                  options={inventoryOptions}
+                  placeholder="Select item"
+                />
+              </Field>
+              <Field error={deliveryErrors.date?.message} label="Date">
+                <FormDatePicker
+                  control={deliveryForm.control}
+                  label="Date"
+                  name="date"
+                />
+              </Field>
+              <Field error={deliveryErrors.quantity?.message} label="Quantity">
+                <AppInput
+                  aria-label="Quantity"
+                  isRequired
+                  min="0.01"
+                  step="0.01"
+                  type="number"
+                  {...deliveryForm.register('quantity')}
+                />
+              </Field>
+              <Field error={deliveryErrors.cost?.message} label="Unit cost">
+                <AppInput
+                  aria-label="Unit cost"
+                  isRequired
+                  min="0"
+                  step="0.01"
+                  type="number"
+                  {...deliveryForm.register('cost')}
+                />
+              </Field>
+              <Field
+                error={deliveryErrors.amountPaid?.message}
+                hint="Enter 0 to put the full total on the vendor's account."
+                label="Amount paid now"
+              >
+                <AppInput
+                  aria-label="Amount paid now"
+                  isRequired
+                  min="0"
+                  step="0.01"
+                  type="number"
+                  {...deliveryForm.register('amountPaid')}
+                />
+              </Field>
+              <Field
+                error={deliveryErrors.payByDate?.message}
+                hint="Optional"
+                label="Pay-by date"
+              >
+                <FormDatePicker
+                  control={deliveryForm.control}
+                  label="Pay-by date"
+                  name="payByDate"
+                />
+              </Field>
+              <Field error={deliveryErrors.invoice?.message} label="Invoice">
+                <AppInput
+                  aria-label="Invoice"
+                  type="text"
+                  {...deliveryForm.register('invoice')}
+                />
+              </Field>
+            </div>
+            <div className="metric-row">
+              <span>Delivery total</span>
+              <strong className="tabular">{formatNaira(deliveryTotal)}</strong>
+            </div>
+            <div className="metric-row">
+              <span>Added to vendor balance</span>
+              <strong className="tabular">
+                {formatNaira(deliveryBalance)}
+              </strong>
+            </div>
+            <FormActions
+              onSecondary={clearForm}
+              secondaryLabel="Cancel"
+              submitLabel={editingId ? 'Update delivery' : 'Add delivery'}
+            />
+          </form>
+        </SidePanel>
+      );
+    }
+
+    if (form === 'count' && canManageInventory) {
+      return (
+        <SidePanel
+          label="Stock count"
+          onClose={clearForm}
+          subtitle="Differences adjust the on-hand level immediately."
+          title={editingId ? 'Edit stock count' : 'Record stock count'}
+        >
+          <form
+            className="admin-form"
+            onSubmit={countForm.handleSubmit(submitCount)}
+          >
+            <div className="field-grid">
+              <Field error={countErrors.itemId?.message} label="Item">
+                <FormSelect
+                  control={countForm.control}
+                  isRequired
+                  label="Item"
+                  name="itemId"
+                  options={inventoryOptions}
+                  placeholder="Select item"
+                />
+              </Field>
+              <Field error={countErrors.date?.message} label="Date">
+                <FormDatePicker
+                  control={countForm.control}
+                  label="Date"
+                  name="date"
+                />
+              </Field>
+              <Field
+                label="Previous level"
+                hint="Calculated from stock records"
+              >
+                <AppInput
+                  aria-label="Previous level"
+                  isReadOnly
+                  type="number"
+                  value={String(previousLevel)}
+                />
+              </Field>
+              <Field
+                error={countErrors.counted?.message}
+                label="Counted quantity"
+              >
+                <AppInput
+                  aria-label="Counted quantity"
+                  isRequired
+                  min="0"
+                  step="0.01"
+                  type="number"
+                  {...countForm.register('counted')}
+                />
+              </Field>
+            </div>
+            <div className="metric-row">
+              <span>Difference</span>
+              <strong className="tabular">
+                {signedNumber(countDifference)}
+              </strong>
+            </div>
+            <div className="metric-row">
+              <span>Value</span>
+              <strong className="tabular">{formatNaira(countValue)}</strong>
+            </div>
+            <FormActions
+              onSecondary={clearForm}
+              secondaryLabel="Cancel"
+              submitLabel={editingId ? 'Update count' : 'Save count'}
+            />
+          </form>
+        </SidePanel>
+      );
+    }
+
+    if (form === 'loss' && canManageInventory) {
+      return (
+        <SidePanel
+          label="Loss or gain"
+          onClose={clearForm}
+          subtitle="Adjust stock for spoilage, breakage or corrections."
+          title={editingId ? 'Edit loss record' : 'Record loss or gain'}
+        >
+          <form
+            className="admin-form"
+            onSubmit={lossForm.handleSubmit(submitLoss)}
+          >
+            <div className="field-grid">
+              <Field error={lossErrors.itemId?.message} label="Item">
+                <FormSelect
+                  control={lossForm.control}
+                  isRequired
+                  label="Item"
+                  name="itemId"
+                  options={inventoryOptions}
+                  placeholder="Select item"
+                />
+              </Field>
+              <Field label="Type">
+                <FormSelect
+                  control={lossForm.control}
+                  label="Type"
+                  name="type"
+                  options={LOSS_TYPE_OPTIONS}
+                />
+              </Field>
+              <Field error={lossErrors.date?.message} label="Date">
+                <FormDatePicker
+                  control={lossForm.control}
+                  label="Date"
+                  name="date"
+                />
+              </Field>
+              <Field error={lossErrors.quantity?.message} label="Quantity">
+                <AppInput
+                  aria-label="Quantity"
+                  isRequired
+                  min="0.01"
+                  step="0.01"
+                  type="number"
+                  {...lossForm.register('quantity')}
+                />
+              </Field>
+              <Field error={lossErrors.reason?.message} label="Reason">
+                <AppInput
+                  aria-label="Reason"
+                  isRequired
+                  type="text"
+                  {...lossForm.register('reason')}
+                />
+              </Field>
+            </div>
+            <div className="metric-row">
+              <span>Value</span>
+              <strong className="tabular">{formatNaira(lossValue)}</strong>
+            </div>
+            <FormActions
+              onSecondary={clearForm}
+              secondaryLabel="Cancel"
+              submitLabel={editingId ? 'Update record' : 'Save record'}
+            />
+          </form>
+        </SidePanel>
+      );
+    }
+
+    return undefined;
+  })();
 
   return (
-    <DashboardLayout sidePanel={itemSidePanel}>
+    <DashboardLayout sidePanel={sidePanel}>
       <PageHeader
         title="Stock"
         subtitle={
@@ -949,256 +1219,6 @@ const Stock = () => {
           emptyMessage="All items are above reorder level."
         />
       </Panel>
-
-      {form === 'delivery' && canManageVendors && (
-        <Panel
-          title={editingId ? 'Edit delivery' : 'Record delivery'}
-          subtitle="Unpaid amounts are added to the vendor balance."
-        >
-          <form
-            className="admin-form"
-            onSubmit={deliveryForm.handleSubmit(submitDelivery)}
-          >
-            <div className="field-grid">
-              <Field error={deliveryErrors.vendorId?.message} label="Vendor">
-                <FormSelect
-                  control={deliveryForm.control}
-                  isRequired
-                  label="Vendor"
-                  name="vendorId"
-                  options={vendorOptions}
-                  placeholder="Select vendor"
-                />
-              </Field>
-              <Field
-                error={deliveryErrors.item?.message}
-                label="Inventory item"
-              >
-                <FormSelect
-                  control={deliveryForm.control}
-                  isRequired
-                  label="Inventory item"
-                  name="inventoryItemId"
-                  options={inventoryOptions}
-                  placeholder="Select item"
-                />
-              </Field>
-              <Field error={deliveryErrors.date?.message} label="Date">
-                <FormDatePicker
-                  control={deliveryForm.control}
-                  label="Date"
-                  name="date"
-                />
-              </Field>
-              <Field error={deliveryErrors.quantity?.message} label="Quantity">
-                <AppInput
-                  aria-label="Quantity"
-                  isRequired
-                  min="0.01"
-                  step="0.01"
-                  type="number"
-                  {...deliveryForm.register('quantity')}
-                />
-              </Field>
-              <Field error={deliveryErrors.cost?.message} label="Unit cost">
-                <AppInput
-                  aria-label="Unit cost"
-                  isRequired
-                  min="0"
-                  step="0.01"
-                  type="number"
-                  {...deliveryForm.register('cost')}
-                />
-              </Field>
-              <Field
-                error={deliveryErrors.amountPaid?.message}
-                hint="Enter 0 to put the full total on the vendor's account."
-                label="Amount paid now"
-              >
-                <AppInput
-                  aria-label="Amount paid now"
-                  isRequired
-                  min="0"
-                  step="0.01"
-                  type="number"
-                  {...deliveryForm.register('amountPaid')}
-                />
-              </Field>
-              <Field
-                error={deliveryErrors.payByDate?.message}
-                hint="Optional"
-                label="Pay-by date"
-              >
-                <FormDatePicker
-                  control={deliveryForm.control}
-                  label="Pay-by date"
-                  name="payByDate"
-                />
-              </Field>
-              <Field error={deliveryErrors.invoice?.message} label="Invoice">
-                <AppInput
-                  aria-label="Invoice"
-                  type="text"
-                  {...deliveryForm.register('invoice')}
-                />
-              </Field>
-            </div>
-            <div className="metric-row">
-              <span>Delivery total</span>
-              <strong className="tabular">{formatNaira(deliveryTotal)}</strong>
-            </div>
-            <div className="metric-row">
-              <span>Added to vendor balance</span>
-              <strong className="tabular">
-                {formatNaira(deliveryBalance)}
-              </strong>
-            </div>
-            <FormActions
-              onSecondary={clearForm}
-              secondaryLabel="Cancel"
-              submitLabel={editingId ? 'Update delivery' : 'Add delivery'}
-            />
-          </form>
-        </Panel>
-      )}
-
-      {form === 'count' && canManageInventory && (
-        <Panel
-          title={editingId ? 'Edit stock count' : 'Record stock count'}
-          subtitle="Differences adjust the on-hand level immediately."
-        >
-          <form
-            className="admin-form"
-            onSubmit={countForm.handleSubmit(submitCount)}
-          >
-            <div className="field-grid">
-              <Field error={countErrors.itemId?.message} label="Item">
-                <FormSelect
-                  control={countForm.control}
-                  isRequired
-                  label="Item"
-                  name="itemId"
-                  options={inventoryOptions}
-                  placeholder="Select item"
-                />
-              </Field>
-              <Field error={countErrors.date?.message} label="Date">
-                <FormDatePicker
-                  control={countForm.control}
-                  label="Date"
-                  name="date"
-                />
-              </Field>
-              <Field
-                label="Previous level"
-                hint="Calculated from stock records"
-              >
-                <AppInput
-                  aria-label="Previous level"
-                  isReadOnly
-                  type="number"
-                  value={String(previousLevel)}
-                />
-              </Field>
-              <Field
-                error={countErrors.counted?.message}
-                label="Counted quantity"
-              >
-                <AppInput
-                  aria-label="Counted quantity"
-                  isRequired
-                  min="0"
-                  step="0.01"
-                  type="number"
-                  {...countForm.register('counted')}
-                />
-              </Field>
-            </div>
-            <div className="metric-row">
-              <span>Difference</span>
-              <strong className="tabular">
-                {signedNumber(countDifference)}
-              </strong>
-            </div>
-            <div className="metric-row">
-              <span>Value</span>
-              <strong className="tabular">{formatNaira(countValue)}</strong>
-            </div>
-            <FormActions
-              onSecondary={clearForm}
-              secondaryLabel="Cancel"
-              submitLabel={editingId ? 'Update count' : 'Save count'}
-            />
-          </form>
-        </Panel>
-      )}
-
-      {form === 'loss' && canManageInventory && (
-        <Panel
-          title={editingId ? 'Edit loss record' : 'Record loss or gain'}
-          subtitle="Adjust stock for spoilage, breakage or corrections."
-        >
-          <form
-            className="admin-form"
-            onSubmit={lossForm.handleSubmit(submitLoss)}
-          >
-            <div className="field-grid">
-              <Field error={lossErrors.itemId?.message} label="Item">
-                <FormSelect
-                  control={lossForm.control}
-                  isRequired
-                  label="Item"
-                  name="itemId"
-                  options={inventoryOptions}
-                  placeholder="Select item"
-                />
-              </Field>
-              <Field label="Type">
-                <FormSelect
-                  control={lossForm.control}
-                  label="Type"
-                  name="type"
-                  options={LOSS_TYPE_OPTIONS}
-                />
-              </Field>
-              <Field error={lossErrors.date?.message} label="Date">
-                <FormDatePicker
-                  control={lossForm.control}
-                  label="Date"
-                  name="date"
-                />
-              </Field>
-              <Field error={lossErrors.quantity?.message} label="Quantity">
-                <AppInput
-                  aria-label="Quantity"
-                  isRequired
-                  min="0.01"
-                  step="0.01"
-                  type="number"
-                  {...lossForm.register('quantity')}
-                />
-              </Field>
-              <Field error={lossErrors.reason?.message} label="Reason">
-                <AppInput
-                  aria-label="Reason"
-                  isRequired
-                  type="text"
-                  {...lossForm.register('reason')}
-                />
-              </Field>
-            </div>
-            <div className="metric-row">
-              <span>Value</span>
-              <strong className="tabular">{formatNaira(lossValue)}</strong>
-            </div>
-            <FormActions
-              onSecondary={clearForm}
-              secondaryLabel="Cancel"
-              submitLabel={editingId ? 'Update record' : 'Save record'}
-            />
-          </form>
-        </Panel>
-      )}
 
       <Panel
         title="Deliveries"
